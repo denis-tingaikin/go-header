@@ -29,7 +29,13 @@ func doCheck(config *models.Configuration) {
 	wg.Add(readOnlyConfig.GoroutineCount())
 	for i := 0; i < readOnlyConfig.GoroutineCount(); i++ {
 		go func(index int) {
-			results := analyseSources(analyser, config, sources[index*step:(index+1)*step])
+			var slice []*models.Source
+			if index+1 == readOnlyConfig.GoroutineCount() {
+				slice = sources[index*step:]
+			} else {
+				slice = sources[index*step : (index+1)*step]
+			}
+			results := analyseSources(analyser, config, slice)
 			for _, result := range results {
 				if !result.errList.Empty() {
 					pass = false
