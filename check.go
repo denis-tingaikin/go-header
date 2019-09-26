@@ -14,21 +14,20 @@ import (
 )
 
 func doCheck(config *models.Configuration) {
-	result := config.Validate()
-	if !result.Empty() {
-		fmt.Fprintln(os.Stderr, result.String())
+	if validationResult := config.Validate(); !validationResult.Empty() {
+		fmt.Fprintln(os.Stderr, validationResult.String())
 		os.Exit(1)
 	}
 	pass := true
 	readOnlyConfig := models.AsReadonly(config)
-	a := analysis.NewFromConfig(readOnlyConfig)
+	analyser := analysis.NewFromConfig(readOnlyConfig)
 	sources := provider.NewGitSources(readOnlyConfig).Get()
 	step := len(sources) / readOnlyConfig.GoroutineCount()
 	wg := sync.WaitGroup{}
 	wg.Add(readOnlyConfig.GoroutineCount())
 	for i := 0; i < readOnlyConfig.GoroutineCount(); i++ {
 		go func(index int) {
-			results := analyseSources(a, config, sources[index*step:(index+1)*step])
+			results := analyseSources(analyser, config, sources[index*step:(index+1)*step])
 			for _, result := range results {
 				if !result.errList.Empty() {
 					pass = false

@@ -52,23 +52,23 @@ func readHeader(reader io.Reader) string {
 	return strings.TrimSpace(result.String())
 }
 
-func readMultiLineHeader(r *bufio.Reader, builder *strings.Builder) {
+func readMultiLineHeader(r *bufio.Reader, writer io.StringWriter) {
 	for {
 		line, err := r.ReadString('\n')
 		if cantIgnore(err) {
 			return
 		}
-		_, _ = builder.WriteString(line)
+		_, _ = writer.WriteString(line)
 		if strings.HasSuffix(line, "*/") {
 			return
 		}
-		if err == io.EOF{
+		if err == io.EOF {
 			return
 		}
 	}
 }
 
-func readSingleLineHeader(r *bufio.Reader, builder *strings.Builder) {
+func readSingleLineHeader(r *bufio.Reader, writer io.StringWriter) {
 	for {
 		line, err := r.ReadString('\n')
 		if cantIgnore(err) {
@@ -77,8 +77,8 @@ func readSingleLineHeader(r *bufio.Reader, builder *strings.Builder) {
 		if !strings.HasPrefix(line, "//") {
 			return
 		}
-		_, _ = builder.WriteString(line)
-		if err == io.EOF{
+		_, _ = writer.WriteString(line)
+		if err == io.EOF {
 			return
 		}
 	}
