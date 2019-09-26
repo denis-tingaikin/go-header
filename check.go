@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/go-header/messages"
 	"github.com/go-header/models"
@@ -14,6 +15,7 @@ import (
 )
 
 func doCheck(config *models.Configuration) {
+	start := time.Now()
 	if validationResult := config.Validate(); !validationResult.Empty() {
 		fmt.Fprintln(os.Stderr, validationResult.String())
 		os.Exit(1)
@@ -38,6 +40,7 @@ func doCheck(config *models.Configuration) {
 		}(i)
 	}
 	wg.Wait()
+	fmt.Printf("Elapsed: %v\n", time.Now().Sub(start))
 	if !pass {
 		os.Exit(1)
 	}
