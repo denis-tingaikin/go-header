@@ -1,0 +1,49 @@
+package models
+
+import (
+	"errors"
+	"io/ioutil"
+	"os"
+	"path"
+	"strings"
+	"testing"
+
+	"github.com/go-header/messages"
+)
+
+func TestRule1(t *testing.T) {
+	filePath := path.Join(os.TempDir(), "testrule1.txt")
+	expected := "header"
+	err := ioutil.WriteFile(filePath, []byte(expected), os.ModePerm)
+	if err != nil {
+		t.FailNow()
+	}
+	defer func() {
+		_ = os.Remove(filePath)
+	}()
+
+	rule := Rule{
+		Template: expected,
+	}
+	if !rule.Compile().Empty() {
+		t.FailNow()
+	}
+	if rule.Template != expected {
+		t.FailNow()
+	}
+}
+
+func TestRule2(t *testing.T) {
+	rule := Rule{
+		TemplatePath: "???",
+	}
+	actualErr := rule.loadTemplate()
+	if actualErr == nil {
+		t.FailNow()
+	}
+	actual := actualErr.Error()
+	expected := messages.CanNotLoadTemplateFromFile(errors.New("")).Error()
+	if !strings.Contains(actual, expected) {
+		t.FailNow()
+	}
+}

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"io/ioutil"
 	"regexp"
 
 	"github.com/go-header/messages"
@@ -8,10 +9,25 @@ import (
 
 type Rule struct {
 	Template      string `yaml:"template"`
+	TemplatePath  string `yaml:"template"`
 	PathMatcher   string `yaml:"path_matcher"`
 	AuthorMatcher string `yaml:"author_matcher"`
 	authorMatcher *regexp.Regexp
 	pathMatcher   *regexp.Regexp
+}
+
+func (r *Rule) loadTemplate() error {
+	if r.Template == "" && r.TemplatePath != "" {
+		bytes, err := ioutil.ReadFile(r.TemplatePath)
+		if err != nil {
+			return messages.CanNotLoadTemplateFromFile(err)
+		}
+		r.Template = string(bytes)
+	}
+	if r.Template == "" {
+		return messages.TemplateNotProvided()
+	}
+	return nil
 }
 
 func (r *Rule) Compile() messages.ErrorList {

@@ -32,7 +32,7 @@ func YearRange(config models.ReadOnlyConfiguration) Pattern {
 				return result
 			}
 			if num == config.Year() {
-				return nil
+				return result
 			}
 			if num > config.Year() || r.Peek() != '-' {
 				result.Append(messages.AnalysisError(start, messages.WrongYear()))

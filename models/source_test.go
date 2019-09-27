@@ -3,11 +3,12 @@ package models
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 )
 
 func TestSourceHeader1(t *testing.T) {
-	filePath := os.TempDir() + "testSourceHeader.file"
+	filePath := path.Join(os.TempDir(), "testSourceHeader.file")
 	expected := `//header`
 	err := ioutil.WriteFile(filePath, []byte(expected), os.ModePerm)
 	if err != nil {
@@ -25,7 +26,7 @@ func TestSourceHeader1(t *testing.T) {
 }
 
 func TestSourceHeader2(t *testing.T) {
-	filePath := os.TempDir() + "testSourceHeader.file"
+	filePath := path.Join(os.TempDir(), "testSourceHeader.file")
 	expected := `/*header*/`
 	err := ioutil.WriteFile(filePath, []byte(expected), os.ModePerm)
 	if err != nil {
@@ -42,7 +43,7 @@ func TestSourceHeader2(t *testing.T) {
 	}
 }
 func TestSourceHeader3(t *testing.T) {
-	filePath := os.TempDir() + "testSourceHeader.file"
+	filePath := path.Join(os.TempDir(), "testSourceHeader.file")
 	expected := `/*
 	header
 	*/`
@@ -62,7 +63,7 @@ func TestSourceHeader3(t *testing.T) {
 	}
 }
 func TestSourceHeader4(t *testing.T) {
-	filePath := os.TempDir() + "testSourceHeader.file"
+	filePath := path.Join(os.TempDir(), "testSourceHeader.file")
 	expected := `//
 //`
 	err := ioutil.WriteFile(filePath, []byte(expected), os.ModePerm)

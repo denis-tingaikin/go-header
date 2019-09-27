@@ -2,7 +2,6 @@ package provider
 
 import (
 	"log"
-	"runtime"
 
 	"github.com/go-header/models"
 	"github.com/go-header/provider/git"
@@ -33,41 +32,17 @@ func (g *gitSources) Get() []*models.Source {
 	if len(files) == 0 {
 		return nil
 	}
-	goroutineCount := runtime.NumCPU()
-	if g.config.GoroutineCount() != 0 {
-		goroutineCount = g.config.GoroutineCount()
-	}
-	step := len(files) / goroutineCount
-	channels := make([]<-chan []*models.Source, goroutineCount)
-	for i := 0; i < goroutineCount; i++ {
-		if i+1 == goroutineCount {
-			channels[i] = g.collectSources(files, i*step, len(files))
-		} else {
-			channels[i] = g.collectSources(files, i*step, (i+1)*step)
+	result := make([]*models.Source, len(files))
+	utils.SplitWork(func(index int) {
+		file := files[index]
+		author := g.Author(file)
+		source := &models.Source{
+			Path:   file,
+			Author: author,
 		}
-	}
-	result := []*models.Source{}
-	for _, ch := range channels {
-		result = append(result, <-ch...)
-	}
+		result[index] = source
+	}, g.config.GoroutineCount(), len(files))
+
 	log.Printf("Sources: created %v of %v", len(files), len(result))
 	return result
-}
-
-func (g *gitSources) collectSources(files []string, start, end int) <-chan []*models.Source {
-	ch := make(chan []*models.Source)
-	go func() {
-		result := []*models.Source{}
-		for i := start; i < end; i++ {
-			file := files[i]
-			author := g.Author(file)
-			source := &models.Source{
-				Path:   file,
-				Author: author,
-			}
-			result = append(result, source)
-		}
-		ch <- result
-	}()
-	return ch
 }

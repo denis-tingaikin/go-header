@@ -2,6 +2,7 @@ package models
 
 import (
 	"os"
+	"runtime"
 
 	"github.com/go-header/messages"
 )
@@ -36,6 +37,9 @@ func (c *Configuration) Validate() messages.ErrorList {
 	if c.GoroutineCount < 0 {
 		result.Append(messages.IncorrectGoroutineCount(c.GoroutineCount))
 	}
+	if c.GoroutineCount == 0 {
+		c.GoroutineCount = runtime.NumCPU()
+	}
 	if len(c.Rules) == 0 {
 		result.Append(messages.NoRules())
 		return result
@@ -57,8 +61,8 @@ func (c *Configuration) checkRules(errList messages.ErrorList) {
 				errList.Append(messages.CantProcessField(rule.AuthorMatcher, compileResult.Errors()[errIndex]))
 			}
 		}
-		if rule.Template == "" {
-			errList.Append(messages.TemplateNotProvided())
+		if err := rule.loadTemplate(); err != nil {
+			errList.Append(err)
 		}
 	}
 }

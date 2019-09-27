@@ -13,6 +13,10 @@ func ErrorMsg(err error) string {
 	return fmt.Sprintf("Error: %v", err.Error())
 }
 
+func CanNotLoadTemplateFromFile(reason error) error {
+	return fmt.Errorf("can not load template file. %v", ErrorMsg(reason))
+}
+
 func NoRules() error {
 	return errors.New("no rules defined")
 }

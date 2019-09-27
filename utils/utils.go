@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 //DisableLogging disables logging into project
@@ -17,7 +18,7 @@ func DisableLogging() {
 func GoProjectFiles(dir string) []string {
 	filterFunc := func(path string) bool {
 		relativePath := path[len(dir):]
-		return !strings.HasPrefix(relativePath, `\vendor`) && strings.HasSuffix(relativePath, ".go")
+		return !strings.HasPrefix(relativePath, `\vendor`) && strings.HasSuffix(relativePath, ".go") && !strings.HasSuffix(relativePath, "test.go")
 	}
 	return files(dir, filterFunc)
 }
@@ -27,6 +28,32 @@ func Files(dir string) []string {
 	return files(dir, func(string) bool {
 		return true
 	})
+}
+
+//SplitWork splits work
+func SplitWork(work func(int), splitCount, totalWorkCount int) {
+	if work == nil {
+		panic("work is nil")
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(splitCount)
+
+	step := totalWorkCount / splitCount
+
+	for i := 0; i < splitCount; i++ {
+		body := func(start, end int) {
+			for workIndex := start; workIndex < end; workIndex++ {
+				work(workIndex)
+			}
+			wg.Done()
+		}
+		if i+1 == splitCount {
+			go body(i*step, totalWorkCount)
+		} else {
+			go body(i*step, (i+1)*step)
+		}
+	}
+	wg.Wait()
 }
 
 func files(dir string, filterFunc func(string) bool) []string {
