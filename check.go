@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/go-header/utils"
 
 	"github.com/go-header/models"
@@ -24,6 +25,7 @@ func doCheck(config *models.Configuration) {
 	readOnlyConfig := models.AsReadonly(config)
 	analyser := analysis.NewFromConfig(readOnlyConfig)
 	sources := provider.NewGitSources(readOnlyConfig).Get()
+	red := color.New(color.FgRed).SprintFunc()
 	utils.SplitWork(func(index int) {
 		source := sources[index]
 		rule := config.FindRule(source)
@@ -36,7 +38,7 @@ func doCheck(config *models.Configuration) {
 		if !result.Empty() {
 			pass = false
 		}
-		fmt.Printf("%v\n%v\n\n", source.Path, result.String())
+		fmt.Printf("%v\n%v\n\n", source.Path, red(result.String()))
 	}, readOnlyConfig.GoroutineCount(), len(sources))
 	fmt.Printf("Elapsed: %v\n", time.Now().Sub(start))
 	if !pass {
