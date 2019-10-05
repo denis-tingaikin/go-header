@@ -9,7 +9,7 @@ import (
 
 type Rule struct {
 	Template      string `yaml:"template"`
-	TemplatePath  string `yaml:"template"`
+	TemplatePath  string `yaml:"templatePath"`
 	PathMatcher   string `yaml:"path_matcher"`
 	AuthorMatcher string `yaml:"author_matcher"`
 	authorMatcher *regexp.Regexp

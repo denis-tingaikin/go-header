@@ -35,23 +35,22 @@ func SplitWork(work func(int), splitCount, totalWorkCount int) {
 	if work == nil {
 		panic("work is nil")
 	}
+	indexCh := make(chan int)
+	go func() {
+		for i := 0; i < totalWorkCount; i++ {
+			indexCh <- i
+		}
+		close(indexCh)
+	}()
 	wg := sync.WaitGroup{}
 	wg.Add(splitCount)
-
-	step := totalWorkCount / splitCount
-
 	for i := 0; i < splitCount; i++ {
-		body := func(start, end int) {
-			for workIndex := start; workIndex < end; workIndex++ {
-				work(workIndex)
+		go func() {
+			for index := range indexCh {
+				work(index)
 			}
 			wg.Done()
-		}
-		if i+1 == splitCount {
-			go body(i*step, totalWorkCount)
-		} else {
-			go body(i*step, (i+1)*step)
-		}
+		}()
 	}
 	wg.Wait()
 }
