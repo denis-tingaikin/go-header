@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 
-	"github.com/go-header/models"
+	"github.com/denis-tingajkin/go-header/models"
 
-	"github.com/go-header/text"
+	"github.com/denis-tingajkin/go-header/text"
 )
 
 func yearSampleConfig(year int) models.ReadOnlyConfiguration {

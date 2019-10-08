@@ -4,7 +4,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 )
 
 type Configuration struct {

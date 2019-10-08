@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"regexp"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 )
 
 type Rule struct {

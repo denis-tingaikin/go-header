@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/go-header/utils"
+	"github.com/denis-tingajkin/go-header/utils"
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/go-header/models"
+	"github.com/denis-tingajkin/go-header/models"
 )
 
 func main() {

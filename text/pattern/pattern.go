@@ -1,9 +1,9 @@
 package pattern
 
 import (
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 
-	"github.com/go-header/text"
+	"github.com/denis-tingajkin/go-header/text"
 )
 
 //Pattern means specific field handler. For example handler for field {email}

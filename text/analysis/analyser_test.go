@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 
-	"github.com/go-header/models"
+	"github.com/denis-tingajkin/go-header/models"
 )
 
 func testConfig() models.ReadOnlyConfiguration {

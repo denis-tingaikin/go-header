@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/go-header/models"
+	"github.com/denis-tingajkin/go-header/models"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 
-	"github.com/go-header/text"
-	"github.com/go-header/text/pattern"
+	"github.com/denis-tingajkin/go-header/text"
+	"github.com/denis-tingajkin/go-header/text/pattern"
 )
 
 type Analyser interface {

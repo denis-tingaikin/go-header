@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 )
 
 func TestRule1(t *testing.T) {

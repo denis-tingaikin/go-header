@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 )
 
 type Source struct {

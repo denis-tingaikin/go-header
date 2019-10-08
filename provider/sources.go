@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"github.com/go-header/models"
+	"github.com/denis-tingajkin/go-header/models"
 )
 
 //Sources means sources provider

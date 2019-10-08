@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/go-header/messages"
+	"github.com/denis-tingajkin/go-header/messages"
 )
 
 //Git represents API for git

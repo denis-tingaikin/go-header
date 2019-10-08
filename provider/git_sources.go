@@ -3,9 +3,9 @@ package provider
 import (
 	"log"
 
-	"github.com/go-header/models"
-	"github.com/go-header/provider/git"
-	"github.com/go-header/utils"
+	"github.com/denis-tingajkin/go-header/models"
+	"github.com/denis-tingajkin/go-header/provider/git"
+	"github.com/denis-tingajkin/go-header/utils"
 )
 
 type gitSources struct {

@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/go-header/utils"
+	"github.com/denis-tingajkin/go-header/utils"
 
-	"github.com/go-header/models"
-	"github.com/go-header/provider"
-	"github.com/go-header/text/analysis"
+	"github.com/denis-tingajkin/go-header/models"
+	"github.com/denis-tingajkin/go-header/provider"
+	"github.com/denis-tingajkin/go-header/text/analysis"
 )
 
 func doCheck(config *models.Configuration) {
