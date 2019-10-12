@@ -14,8 +14,18 @@ func ErrorMsg(err error) string {
 	return fmt.Sprintf("Error: %v", err.Error())
 }
 
+func CatNotParseAsYear() error {
+	return errors.New("can not parse as year")
+}
+
 func DetectedInfiniteRecursiveEntry(entries ...string) error {
 	return fmt.Errorf("detected infinite recursive entry: %v", strings.Join(entries, "->"))
+}
+
+func Ambiguous(first ErrorList, second ErrorList) error {
+	firstText := first.String()
+	secondText := second.String()
+	return fmt.Errorf("Ambiguous parser error:\nCase 1:\n%v\nCase 2:\n%v", firstText, secondText)
 }
 
 func UnknownCopyrightHolder(position int, holder string, expectedHolders ...string) error {

@@ -67,6 +67,7 @@ func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorLis
 
 func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) messages.ErrorList {
 	result := messages.NewErrorList()
+	potentialErrors := messages.NewErrorList()
 	for !templateReader.Done() && !sourceReader.Done() {
 		if templateReader.Peek() == '{' {
 			start := templateReader.Position()
@@ -88,7 +89,7 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 				if !errs.Empty() {
 					result.Append(errs.Errors()...)
 				} else if customPattern.AllowMultiple {
-					a.readMultiplePattern(sourceReader, customPattern)
+					potentialErrors.Append(a.readMultiplePattern(sourceReader, customPattern).Errors()...)
 				}
 				a.visit[patternName] = false
 				a.visited = a.visited[0 : len(a.visited)-1]
@@ -102,6 +103,9 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 		templateReader.Next()
 		sourceReader.Next()
 	}
+	if !result.Empty() && !potentialErrors.Empty() {
+		return messages.NewErrorList(messages.Ambiguous(result, potentialErrors))
+	}
 	return result
 }
 
@@ -112,15 +116,16 @@ func (a *analyzer) checkLoop(n string) error {
 	return nil
 }
 
-func (a *analyzer) readMultiplePattern(source text.Reader, patter *models.CustomPattern) {
+func (a *analyzer) readMultiplePattern(source text.Reader, patter *models.CustomPattern) messages.ErrorList {
 	for !source.Done() {
 		pop := source.Position()
 		errs := a.analyzeReaders(source, text.NewReader(patter.Pattern))
 		if !errs.Empty() {
 			source.SetPosition(pop)
-			return
+			return errs
 		}
 	}
+	return messages.NewErrorList()
 }
 
 func (a *analyzer) readDiff(actual, expected text.Reader) error {

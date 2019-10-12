@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/denis-tingajkin/go-header/messages"
@@ -27,10 +26,8 @@ func TestDiff1(t *testing.T) {
 	if errs.Empty() || len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	result := errs.String()
-	expectedResult := messages.AnalysisError(0, messages.Diff(actual, expected)).Error()
-	if result != expectedResult {
-		println(result)
+	expectedResult := messages.NewErrorList(messages.AnalysisError(0, messages.Diff(actual, expected)))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -58,9 +55,8 @@ func TestDiff3(t *testing.T) {
 		t.FailNow()
 	}
 
-	result := errs.String()
-	expectedResult := messages.AnalysisError(4, messages.Diff("bc", "abc")).Error()
-	if result != expectedResult {
+	expectedResult := messages.NewErrorList(messages.AnalysisError(4, messages.Diff("bc", "abc")))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -76,9 +72,8 @@ func TestDiff4(t *testing.T) {
 		t.FailNow()
 	}
 
-	result := errs.String()
-	expectedResult := messages.AnalysisError(3, messages.Missed(" abc")).Error()
-	if result != expectedResult {
+	expectedResult := messages.NewErrorList(messages.AnalysisError(3, messages.Missed(" abc")))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -89,14 +84,11 @@ func TestDiff5(t *testing.T) {
 	actual := "abc abc"
 	ctx := WithTemplate(context.Background(), expected)
 	errs := a.Analyse(ctx, actual)
-
 	if errs.Empty() {
 		t.FailNow()
 	}
-
-	result := errs.String()
-	expectedResult := messages.AnalysisError(3, messages.NotExpected(" abc")).Error()
-	if result != expectedResult {
+	expectedResult := messages.NewErrorList(messages.AnalysisError(3, messages.NotExpected(" abc")))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -112,9 +104,8 @@ func TestDiff6(t *testing.T) {
 		t.FailNow()
 	}
 
-	result := errs.String()
-	expectedResult := messages.AnalysisError(3, messages.Diff("_", " ")).Error()
-	if result != expectedResult {
+	expectedResult := messages.NewErrorList(messages.AnalysisError(3, messages.Diff("_", " ")))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -130,9 +121,8 @@ func TestPattern1(t *testing.T) {
 		t.FailNow()
 	}
 
-	result := errs.String()
-	expectedResult := messages.AnalysisError(2, messages.WrongYear()).Error()
-	if result != expectedResult {
+	expectedResult := messages.NewErrorList(messages.AnalysisError(2, messages.WrongYear()))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -142,13 +132,11 @@ func TestPattern2(t *testing.T) {
 	actual := "a b"
 	ctx := WithTemplate(context.Background(), expected)
 	errs := a.Analyse(ctx, actual)
-
 	if errs.Empty() {
 		t.FailNow()
 	}
-	result := errs.String()
-	expectedResult := messages.AnalysisError(2, messages.UnknownPattern("unknown pattern")).Error()
-	if result != expectedResult {
+	expectedResult := messages.NewErrorList(messages.AnalysisError(2, messages.UnknownPattern("unknown pattern")))
+	if !expectedResult.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -178,9 +166,10 @@ func TestCustomPattern2(t *testing.T) {
 	expected := "a {my pattern}b"
 	actual := "a my text.!. 2007b"
 	ctx := WithTemplate(context.Background(), expected)
-	actaulResult := a.Analyse(ctx, actual).String()
-	expectedResult := messages.AnalysisError(10, messages.Diff("!", ".")).Error()
-	if actaulResult != expectedResult {
+	actaulResult := a.Analyse(ctx, actual)
+	expectedResult := messages.NewErrorList(messages.AnalysisError(10, messages.Diff("!", ".")))
+	if !expectedResult.Equals(actaulResult) {
+		println(actaulResult.String())
 		t.FailNow()
 	}
 }
@@ -198,9 +187,12 @@ func TestCustomPattern3(t *testing.T) {
 	expected := "{my pattern1}"
 	actual := "..."
 	ctx := WithTemplate(context.Background(), expected)
-	actaulResult := a.Analyse(ctx, actual).String()
-	expectedResult := messages.DetectedInfiniteRecursiveEntry(myPattern1.Name, myPattern2.Name, myPattern1.Name).Error()
-	if !strings.Contains(actaulResult, expectedResult) {
+	actaulResult := a.Analyse(ctx, actual)
+	expectedResult := messages.NewErrorList(
+		messages.DetectedInfiniteRecursiveEntry(myPattern1.Name, myPattern2.Name, myPattern1.Name),
+		messages.AnalysisError(13, messages.NotExpected("...")))
+	if !expectedResult.Equals(actaulResult) {
+		println(actaulResult.String())
 		t.FailNow()
 	}
 }
@@ -217,6 +209,28 @@ func TestCustomPattern4(t *testing.T) {
 	ctx := WithTemplate(context.Background(), expected)
 	actaulResult := a.Analyse(ctx, actual)
 	if !actaulResult.Empty() {
+		println(actaulResult.String())
+		t.FailNow()
+	}
+}
+
+func TestCustomPattern5(t *testing.T) {
+	myPattern := models.CustomPattern{
+		Name:          "my pattern",
+		Pattern:       "my text... {year range}\n",
+		AllowMultiple: true,
+	}
+	a := NewFromConfig(testConfigWithPatterns(myPattern))
+	expected := "a {my pattern}b"
+	actual := "a my text... 2007\nmy text... 2005-asd\nb"
+	ctx := WithTemplate(context.Background(), expected)
+	actaulResult := a.Analyse(ctx, actual)
+	expectedResult := messages.NewErrorList(
+		messages.Ambiguous(
+			messages.NewErrorList(messages.AnalysisError(18, messages.Diff("my text... 2005-asd\nb", "b"))),
+			messages.NewErrorList(messages.AnalysisError(34, messages.CatNotParseAsYear()), messages.AnalysisError(34, messages.Diff("asd\nb", "\n")))))
+	if !expectedResult.Equals(actaulResult) {
+		println(expectedResult.String())
 		println(actaulResult.String())
 		t.FailNow()
 	}

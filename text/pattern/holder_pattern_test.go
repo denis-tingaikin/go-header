@@ -41,7 +41,8 @@ func TestHolder2(t *testing.T) {
 	if errs.Empty() {
 		t.FailNow()
 	}
-	if errs.String() != messages.UnknownCopyrightHolder(p, "4", conf.CopyrightHolders()...).Error() {
+	expected := messages.NewErrorList(messages.UnknownCopyrightHolder(p, "4", conf.CopyrightHolders()...))
+	if !errs.Equals(expected) {
 		t.FailNow()
 	}
 }
@@ -52,7 +53,8 @@ func TestHolder3(t *testing.T) {
 	if errs.Empty() {
 		t.FailNow()
 	}
-	if messages.UnknownCopyrightHolder(0, "").Error() != errs.String() {
+	expected := messages.NewErrorList(messages.UnknownCopyrightHolder(0, ""))
+	if !expected.Equals(errs) {
 		t.FailNow()
 	}
 }

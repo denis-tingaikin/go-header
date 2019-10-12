@@ -7,11 +7,23 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 //DisableLogging disables logging into project
 func DisableLogging() {
 	log.SetOutput(ioutil.Discard)
+}
+
+//MakeFirstLetterUpercase makes first latter of string uppercase
+func MakeFirstLetterUpercase(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	builder := strings.Builder{}
+	_, _ = builder.WriteRune(unicode.ToUpper(rune(s[0])))
+	_, _ = builder.WriteString(s[1:len(s)])
+	return builder.String()
 }
 
 //GoProjectFiles returns all .go files in dir. Excludes vendor folder.

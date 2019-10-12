@@ -14,11 +14,11 @@ import (
 func readNum(r text.Reader) (int, error) {
 	start := r.Position()
 	number := r.ReadWhile(unicode.IsDigit)
-	result, err := strconv.Atoi(number)
-	if err != nil {
-		return -1, messages.AnalysisError(start, err)
+	if number == "" {
+		return -1, messages.AnalysisError(start, messages.CatNotParseAsYear())
 	}
-	return result, nil
+	result, err := strconv.Atoi(number)
+	return result, err
 }
 
 func YearRange(config models.ReadOnlyConfiguration) Pattern {

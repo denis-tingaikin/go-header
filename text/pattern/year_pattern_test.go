@@ -1,7 +1,6 @@
 package pattern
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/denis-tingajkin/go-header/messages"
@@ -43,8 +42,8 @@ func TestYearRange3(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	actual := errs.String()
-	if !(strings.Contains(actual, "position: 0") && strings.Contains(actual, "invalid syntax")) {
+	expected := messages.NewErrorList(messages.AnalysisError(0, messages.CatNotParseAsYear()))
+	if !expected.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -56,9 +55,8 @@ func TestYearRange4(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	actual := errs.String()
-	expected := messages.AnalysisError(0, messages.WrongYear()).Error()
-	if actual != expected {
+	expected := messages.NewErrorList(messages.AnalysisError(0, messages.WrongYear()))
+	if !errs.Equals(expected) {
 		t.FailNow()
 	}
 }
@@ -70,9 +68,9 @@ func TestYearRange5(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	actual := errs.String()
-	expected := messages.AnalysisError(0, messages.WrongYear()).Error()
-	if actual != expected {
+	expected := messages.NewErrorList(messages.AnalysisError(0, messages.WrongYear()))
+	if !expected.Equals(errs) {
+		println(errs.String())
 		t.FailNow()
 	}
 }
@@ -84,9 +82,8 @@ func TestYearRange6(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	actual := errs.String()
-	expected := messages.AnalysisError(5, messages.WrongYear()).Error()
-	if actual != expected {
+	expected := messages.NewErrorList(messages.AnalysisError(5, messages.WrongYear()))
+	if !expected.Equals(errs) {
 		t.FailNow()
 	}
 }
@@ -97,8 +94,8 @@ func TestYearRange7(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	actual := errs.String()
-	if !(strings.Contains(actual, "position: 5") && strings.Contains(actual, "invalid syntax")) {
+	expected := messages.NewErrorList(messages.AnalysisError(5, messages.CatNotParseAsYear()))
+	if !expected.Equals(errs) {
 		t.FailNow()
 	}
 }

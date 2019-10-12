@@ -9,16 +9,16 @@ import (
 
 func TestConfig1(t *testing.T) {
 	config := Configuration{}
-	errs := config.Validate()
+	actual := config.Validate()
 
-	if errs.Empty() {
-		t.Fail()
+	if actual.Empty() {
+		t.FailNow()
 	}
 
-	epxected := messages.NoRules()
+	epxected := messages.NewErrorList(messages.NoRules())
 
-	if epxected.Error() != errs.String() {
-		t.Fail()
+	if !actual.Equals(epxected) {
+		t.FailNow()
 	}
 }
 
@@ -32,9 +32,9 @@ func TestConfig2(t *testing.T) {
 		t.Fail()
 	}
 
-	epxected := messages.IncorrectGoroutineCount(-1).Error() + "\n" + messages.NoRules().Error()
+	epxected := messages.NewErrorList(messages.IncorrectGoroutineCount(-1), messages.NoRules())
 
-	if epxected != actual.String() {
+	if !epxected.Equals(actual) {
 		t.Fail()
 	}
 }
@@ -49,7 +49,8 @@ func TestConfig3(t *testing.T) {
 		t.Fail()
 	}
 
-	if actual.String() != messages.TemplateNotProvided().Error() {
+	exepcted := messages.NewErrorList(messages.TemplateNotProvided())
+	if !exepcted.Equals(actual) {
 		println(actual.String())
 		t.Fail()
 	}
@@ -95,8 +96,8 @@ func TestConfig6(t *testing.T) {
 	}
 	_, err1 := regexp.Compile(config.Rules[0].PathMatcher)
 	_, err2 := regexp.Compile(config.Rules[0].AuthorMatcher)
-	expected := messages.CantProcessField(config.Rules[0].PathMatcher, err1).Error() + "\n" + messages.CantProcessField(config.Rules[0].AuthorMatcher, err2).Error()
-	if actual.String() != expected {
+	expected := messages.NewErrorList(messages.CantProcessField(config.Rules[0].PathMatcher, err1), messages.CantProcessField(config.Rules[0].AuthorMatcher, err2))
+	if !actual.Equals(expected) {
 		println(actual.String())
 		println(expected)
 		t.Fail()
@@ -115,8 +116,8 @@ func TestConfig7(t *testing.T) {
 		t.Fail()
 	}
 	_, err := regexp.Compile(config.Rules[0].AuthorMatcher)
-	expected := messages.CantProcessField(config.Rules[0].AuthorMatcher, err).Error()
-	if actual.String() != expected {
+	expected := messages.NewErrorList(messages.CantProcessField(config.Rules[0].AuthorMatcher, err))
+	if !actual.Equals(expected) {
 		println(actual.String())
 		println(expected)
 		t.Fail()
