@@ -25,7 +25,7 @@ func DetectedInfiniteRecursiveEntry(entries ...string) error {
 func Ambiguous(first ErrorList, second ErrorList) error {
 	firstText := first.String()
 	secondText := second.String()
-	return fmt.Errorf("Ambiguous parser error:\nCase 1:\n%v\nCase 2:\n%v", firstText, secondText)
+	return fmt.Errorf("ambiguous parser error:\nCase 1:\n%v\nCase 2:\n%v", firstText, secondText)
 }
 
 func UnknownCopyrightHolder(position int, holder string, expectedHolders ...string) error {
@@ -69,14 +69,14 @@ func VerifyFuncNotProvided() error {
 }
 
 func WrongYear() error {
-	return errors.New("expected year range of file creation year to current year")
+	return errors.New("expects the interval from the year the file was created to the current year")
 }
 func AnalysisError(position int, reason error) error {
 	return fmt.Errorf("position: %v, %v", position, ErrorMsg(reason))
 }
 
 func Diff(actual, expected interface{}) error {
-	return fmt.Errorf("expected: %v, actual: %v", expected, actual)
+	return fmt.Errorf("expected:\n%v\nactual:\n%v", expected, actual)
 }
 
 func Missed(what string) error {
