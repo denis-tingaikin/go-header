@@ -9,12 +9,12 @@ import (
 
 type Configuration struct {
 	Year            int             `yaml:"year"`
-	GoProject       bool            `yaml:"go_project"`
-	GoroutineCount  int             `yaml:"goroutine_count"`
+	GoProject       bool            `yaml:"go-project"`
+	GoroutineCount  int             `yaml:"goroutine-count"`
 	ProjectDir      string          `yaml:"project_dir"`
 	Rules           []Rule          `yaml:"rules"`
-	CopyrigtHolders []string        `yaml:copyright_holders`
-	CustomPatterns  []CustomPattern `yaml:custom_patterns`
+	CopyrigtHolders []string        `yaml:"copyright-holders"`
+	CustomPatterns  []CustomPattern `yaml:"custom-patterns"`
 }
 
 func (c *Configuration) FindRule(s *Source) *Rule {

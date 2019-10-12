@@ -9,9 +9,9 @@ import (
 
 type Rule struct {
 	Template      string `yaml:"template"`
-	TemplatePath  string `yaml:"templatePath"`
-	PathMatcher   string `yaml:"path_matcher"`
-	AuthorMatcher string `yaml:"author_matcher"`
+	TemplatePath  string `yaml:"template-path"`
+	PathMatcher   string `yaml:"path-matcher"`
+	AuthorMatcher string `yaml:"author-matcher"`
 	authorMatcher *regexp.Regexp
 	pathMatcher   *regexp.Regexp
 }

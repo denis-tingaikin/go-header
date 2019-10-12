@@ -23,7 +23,8 @@ func NewFromConfig(config models.ReadOnlyConfiguration) Analyser {
 	configPatterns := config.CustomPatterns()
 	for i := range configPatterns {
 		pattern := &configPatterns[i]
-		customPatterns[pattern.Name] = pattern
+		key := strings.ToLower(pattern.Name)
+		customPatterns[key] = pattern
 	}
 	return &analyzer{
 		patterns: map[string]pattern.Pattern{
@@ -31,15 +32,12 @@ func NewFromConfig(config models.ReadOnlyConfiguration) Analyser {
 			copyrightHolderPattern.Name(): copyrightHolderPattern,
 		},
 		customPatterns: customPatterns,
-		visit:          map[string]bool{},
 	}
 }
 
 type analyzer struct {
 	patterns       map[string]pattern.Pattern
 	customPatterns map[string]*models.CustomPattern
-	visit          map[string]bool
-	visited        []string
 }
 
 func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorList {
@@ -53,7 +51,7 @@ func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorLis
 	templateReader := text.NewReader(template)
 	sourceReader := text.NewReader(source)
 
-	result := a.analyzeReaders(sourceReader, templateReader)
+	result := a.analyzeReaders(ctx, sourceReader, templateReader)
 
 	if !templateReader.Done() {
 		result.Append(messages.AnalysisError(sourceReader.Position(), messages.Missed(templateReader.Finish())))
@@ -65,7 +63,7 @@ func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorLis
 	return result
 }
 
-func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) messages.ErrorList {
+func (a *analyzer) analyzeReaders(ctx context.Context, sourceReader, templateReader text.Reader) messages.ErrorList {
 	result := messages.NewErrorList()
 	potentialErrors := messages.NewErrorList()
 	for !templateReader.Done() && !sourceReader.Done() {
@@ -74,7 +72,7 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 			patternName := strings.ToLower(a.readField(templateReader))
 			pattern := a.patterns[patternName]
 			customPattern := a.customPatterns[patternName]
-			if err := a.checkLoop(patternName); err != nil {
+			if err := a.checkLoop(ctx, patternName); err != nil {
 				result.Append(err)
 				return result
 			}
@@ -83,16 +81,14 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 				continue
 			}
 			if customPattern != nil {
-				a.visit[patternName] = true
-				a.visited = append(a.visited, patternName)
-				errs := a.analyzeReaders(sourceReader, text.NewReader(customPattern.Pattern))
+				ctx = Visit(ctx, patternName)
+				errs := a.analyzeReaders(ctx, sourceReader, text.NewReader(customPattern.Pattern))
 				if !errs.Empty() {
 					result.Append(errs.Errors()...)
 				} else if customPattern.AllowMultiple {
-					potentialErrors.Append(a.readMultiplePattern(sourceReader, customPattern).Errors()...)
+					potentialErrors.Append(a.readMultiplePattern(ctx, sourceReader, customPattern).Errors()...)
 				}
-				a.visit[patternName] = false
-				a.visited = a.visited[0 : len(a.visited)-1]
+				ctx = Leave(ctx, patternName)
 				continue
 			}
 			result.Append(messages.AnalysisError(start, messages.UnknownPattern(patternName)))
@@ -109,17 +105,17 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 	return result
 }
 
-func (a *analyzer) checkLoop(n string) error {
-	if a.visit[n] {
-		return messages.DetectedInfiniteRecursiveEntry(append(a.visited, n)...)
+func (a *analyzer) checkLoop(ctx context.Context, n string) error {
+	if IsVisited(ctx, n) {
+		return messages.DetectedInfiniteRecursiveEntry(append(VisitedList(ctx), n)...)
 	}
 	return nil
 }
 
-func (a *analyzer) readMultiplePattern(source text.Reader, patter *models.CustomPattern) messages.ErrorList {
+func (a *analyzer) readMultiplePattern(ctx context.Context, source text.Reader, patter *models.CustomPattern) messages.ErrorList {
 	for !source.Done() {
 		pop := source.Position()
-		errs := a.analyzeReaders(source, text.NewReader(patter.Pattern))
+		errs := a.analyzeReaders(ctx, source, text.NewReader(patter.Pattern))
 		if !errs.Empty() {
 			source.SetPosition(pop)
 			return errs

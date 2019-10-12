@@ -26,7 +26,7 @@ func CopyrightHolder(config models.ReadOnlyConfiguration) Pattern {
 			return r != '\n'
 		})
 
-		if !containsHolder(holder) {
+		if !containsHolder(strings.ToLower(holder)) {
 			result.Append(messages.UnknownCopyrightHolder(start, holder, holders...))
 		} else {
 			if used[holder] {
