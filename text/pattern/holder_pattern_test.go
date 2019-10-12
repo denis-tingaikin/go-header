@@ -56,3 +56,24 @@ func TestHolder3(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestHolder4(t *testing.T) {
+	conf := holderSampleConfig("1", "2", "3")
+	rule := CopyrightHolder(conf)
+	reader := text.NewReader("1\n2\n3\n1")
+	for i := 1; i < 4; i++ {
+		errs := rule.Verify(reader)
+		if !errs.Empty() {
+			println(errs.String())
+			t.FailNow()
+		}
+		_ = reader.Next()
+	}
+	errs := rule.Verify(reader)
+	if errs.Empty() {
+		t.FailNow()
+	}
+	if errs.String() != messages.NewErrorList(messages.CopyrightHolderAlreadyInUse("1")).String() {
+		t.FailNow()
+	}
+}

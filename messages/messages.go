@@ -26,6 +26,10 @@ func UnknownCopyrightHolder(position int, holder string, expectedHolders ...stri
 	return fmt.Errorf("unknown copyright holder: \"%v\" at position %v. Expected: %v", holder, position, expected)
 }
 
+func CopyrightHolderAlreadyInUse(holder string) error {
+	return fmt.Errorf("copyright holder %v already in use", holder)
+}
+
 func CanNotLoadTemplateFromFile(reason error) error {
 	return fmt.Errorf("can not load template file. %v", ErrorMsg(reason))
 }

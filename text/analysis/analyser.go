@@ -54,6 +54,7 @@ func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorLis
 	sourceReader := text.NewReader(source)
 
 	result := a.analyzeReaders(sourceReader, templateReader)
+
 	if !templateReader.Done() {
 		result.Append(messages.AnalysisError(sourceReader.Position(), messages.Missed(templateReader.Finish())))
 	}
@@ -69,7 +70,7 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 	for !templateReader.Done() && !sourceReader.Done() {
 		if templateReader.Peek() == '{' {
 			start := templateReader.Position()
-			patternName := strings.ToLower(readField(templateReader))
+			patternName := strings.ToLower(a.readField(templateReader))
 			pattern := a.patterns[patternName]
 			customPattern := a.customPatterns[patternName]
 			if err := a.checkLoop(patternName); err != nil {
@@ -83,7 +84,12 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 			if customPattern != nil {
 				a.visit[patternName] = true
 				a.visited = append(a.visited, patternName)
-				result.Append(a.analyzeReaders(sourceReader, text.NewReader(customPattern.Pattern)).Errors()...)
+				errs := a.analyzeReaders(sourceReader, text.NewReader(customPattern.Pattern))
+				if !errs.Empty() {
+					result.Append(errs.Errors()...)
+				} else if customPattern.AllowMultiple {
+					a.readMultiplePattern(sourceReader, customPattern)
+				}
 				a.visit[patternName] = false
 				a.visited = a.visited[0 : len(a.visited)-1]
 				continue
@@ -91,7 +97,7 @@ func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) mess
 			result.Append(messages.AnalysisError(start, messages.UnknownPattern(patternName)))
 		}
 		if templateReader.Peek() != sourceReader.Peek() {
-			result.Append(readDiff(sourceReader, templateReader))
+			result.Append(a.readDiff(sourceReader, templateReader))
 		}
 		templateReader.Next()
 		sourceReader.Next()
@@ -106,7 +112,18 @@ func (a *analyzer) checkLoop(n string) error {
 	return nil
 }
 
-func readDiff(actual, expected text.Reader) error {
+func (a *analyzer) readMultiplePattern(source text.Reader, patter *models.CustomPattern) {
+	for !source.Done() {
+		pop := source.Position()
+		errs := a.analyzeReaders(source, text.NewReader(patter.Pattern))
+		if !errs.Empty() {
+			source.SetPosition(pop)
+			return
+		}
+	}
+}
+
+func (a *analyzer) readDiff(actual, expected text.Reader) error {
 	start := actual.Position()
 	sb1 := strings.Builder{}
 	sb2 := strings.Builder{}
@@ -128,7 +145,7 @@ func readDiff(actual, expected text.Reader) error {
 	return messages.AnalysisError(start, messages.Diff(sb1.String(), sb2.String()))
 }
 
-func readField(reader text.Reader) string {
+func (a *analyzer) readField(reader text.Reader) string {
 	_ = reader.Next()
 	defer reader.Next()
 	return reader.ReadWhile(func(r rune) bool {

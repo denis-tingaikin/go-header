@@ -6,6 +6,7 @@ type Reader interface {
 	Done() bool
 	Finish() string
 	Position() int
+	SetPosition(int)
 	ReadWhile(func(rune) bool) string
 }
 
@@ -48,6 +49,13 @@ func (r *reader) Finish() string {
 	}
 	defer r.till()
 	return r.source[r.position:]
+}
+
+func (r *reader) SetPosition(pos int) {
+	if pos < 0 {
+		r.position = 0
+	}
+	r.position = pos
 }
 
 func (r *reader) ReadWhile(match func(rune) bool) string {

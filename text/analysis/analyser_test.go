@@ -204,3 +204,20 @@ func TestCustomPattern3(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestCustomPattern4(t *testing.T) {
+	myPattern := models.CustomPattern{
+		Name:          "my pattern",
+		Pattern:       "my text... {year range}\n",
+		AllowMultiple: true,
+	}
+	a := NewFromConfig(testConfigWithPatterns(myPattern))
+	expected := "a {my pattern}b"
+	actual := "a my text... 2007\nmy text... 2005-2007\nb"
+	ctx := WithTemplate(context.Background(), expected)
+	actaulResult := a.Analyse(ctx, actual)
+	if !actaulResult.Empty() {
+		println(actaulResult.String())
+		t.FailNow()
+	}
+}
