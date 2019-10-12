@@ -3,6 +3,7 @@ package messages
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 //ErrorMsg returns const string if err is nil otherwise returns formated error
@@ -11,6 +12,18 @@ func ErrorMsg(err error) string {
 		return "<error is nil>"
 	}
 	return fmt.Sprintf("Error: %v", err.Error())
+}
+
+func DetectedInfiniteRecursiveEntry(entries ...string) error {
+	return fmt.Errorf("detected infinite recursive entry: %v", strings.Join(entries, "->"))
+}
+
+func UnknownCopyrightHolder(position int, holder string, expectedHolders ...string) error {
+	expected := strings.Join(expectedHolders, ",")
+	if expected == "" {
+		expected = "any not empty string"
+	}
+	return fmt.Errorf("unknown copyright holder: \"%v\" at position %v. Expected: %v", holder, position, expected)
 }
 
 func CanNotLoadTemplateFromFile(reason error) error {

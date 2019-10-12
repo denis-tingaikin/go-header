@@ -1,35 +1,30 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"os"
-
-	"github.com/denis-tingajkin/go-header/utils"
-
-	"gopkg.in/yaml.v2"
-
 	"github.com/denis-tingajkin/go-header/models"
+	"github.com/denis-tingajkin/go-header/provider"
 )
 
 func main() {
-	pathToFile := flag.String("path", "go-header.yaml", "provides path to config.yaml file")
-	logging := flag.Bool("logging", true, "enables logging in to stdout")
-	flag.Parse()
-	if !*logging {
-		utils.DisableLogging()
+	config := &models.Configuration{
+		Rules: []models.Rule{
+			models.Rule{
+				Template: "rofl",
+			},
+		},
 	}
-	config := new(models.Configuration)
-	bytes, err := ioutil.ReadFile(*pathToFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "An error during read file '%v'. Err: %v\n", *pathToFile, err)
-		os.Exit(1)
+	result := config.Validate()
+	if !result.Empty() {
+		println(result.String())
+		return
 	}
-	err = yaml.Unmarshal(bytes, config)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "An error during parse '%v'. Err: %v\n", *pathToFile, err)
-		os.Exit(1)
+	p := provider.NewGitSources(models.AsReadonly(config))
+	m := map[string]bool{}
+	for _, s := range p.Get() {
+		m[s.Header()] = true
 	}
-	doCheck(config)
+	for k := range m {
+		println(k)
+		println()
+	}
 }

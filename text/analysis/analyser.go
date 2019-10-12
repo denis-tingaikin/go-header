@@ -16,51 +16,44 @@ type Analyser interface {
 	Analyse(context.Context, string) messages.ErrorList
 }
 
-func New(patterns map[string]pattern.Pattern) Analyser {
-	return &analyzer{patterns: patterns}
-}
-
 func NewFromConfig(config models.ReadOnlyConfiguration) Analyser {
 	yearPattern := pattern.YearRange(config)
-	return New(map[string]pattern.Pattern{yearPattern.Name(): yearPattern})
+	copyrightHolderPattern := pattern.CopyrightHolder(config)
+	customPatterns := map[string]*models.CustomPattern{}
+	configPatterns := config.CustomPatterns()
+	for i := range configPatterns {
+		pattern := &configPatterns[i]
+		customPatterns[pattern.Name] = pattern
+	}
+	return &analyzer{
+		patterns: map[string]pattern.Pattern{
+			yearPattern.Name():            yearPattern,
+			copyrightHolderPattern.Name(): copyrightHolderPattern,
+		},
+		customPatterns: customPatterns,
+		visit:          map[string]bool{},
+	}
 }
 
 type analyzer struct {
-	patterns map[string]pattern.Pattern
+	patterns       map[string]pattern.Pattern
+	customPatterns map[string]*models.CustomPattern
+	visit          map[string]bool
+	visited        []string
 }
 
 func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorList {
-	result := messages.NewErrorList()
 	template := Template(ctx)
-
 	if template == "" {
-		result.Append(messages.TemplateNotProvided())
-		return result
+		return messages.NewErrorList(messages.TemplateNotProvided())
 	}
 	if source == "" {
-		result.Append(messages.NoHeader())
-		return result
+		return messages.NewErrorList(messages.NoHeader())
 	}
 	templateReader := text.NewReader(template)
 	sourceReader := text.NewReader(source)
-	for !templateReader.Done() && !sourceReader.Done() {
-		if templateReader.Peek() == '{' {
-			start := templateReader.Position()
-			patternName := readField(templateReader)
-			pattern := a.patterns[patternName]
-			if pattern == nil {
-				result.Append(messages.AnalysisError(start, messages.UnknownPattern(patternName)))
-				continue
-			}
-			result.Append(pattern.Verify(sourceReader).Errors()...)
-		}
-		if templateReader.Peek() != sourceReader.Peek() {
-			result.Append(readDiff(sourceReader, templateReader))
-		}
-		templateReader.Next()
-		sourceReader.Next()
-	}
 
+	result := a.analyzeReaders(sourceReader, templateReader)
 	if !templateReader.Done() {
 		result.Append(messages.AnalysisError(sourceReader.Position(), messages.Missed(templateReader.Finish())))
 	}
@@ -68,8 +61,49 @@ func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorLis
 	if !sourceReader.Done() {
 		result.Append(messages.AnalysisError(templateReader.Position(), messages.NotExpected(sourceReader.Finish())))
 	}
-
 	return result
+}
+
+func (a *analyzer) analyzeReaders(sourceReader, templateReader text.Reader) messages.ErrorList {
+	result := messages.NewErrorList()
+	for !templateReader.Done() && !sourceReader.Done() {
+		if templateReader.Peek() == '{' {
+			start := templateReader.Position()
+			patternName := strings.ToLower(readField(templateReader))
+			pattern := a.patterns[patternName]
+			customPattern := a.customPatterns[patternName]
+			if err := a.checkLoop(patternName); err != nil {
+				result.Append(err)
+				return result
+			}
+			if pattern != nil {
+				result.Append(pattern.Verify(sourceReader).Errors()...)
+				continue
+			}
+			if customPattern != nil {
+				a.visit[patternName] = true
+				a.visited = append(a.visited, patternName)
+				result.Append(a.analyzeReaders(sourceReader, text.NewReader(customPattern.Pattern)).Errors()...)
+				a.visit[patternName] = false
+				a.visited = a.visited[0 : len(a.visited)-1]
+				continue
+			}
+			result.Append(messages.AnalysisError(start, messages.UnknownPattern(patternName)))
+		}
+		if templateReader.Peek() != sourceReader.Peek() {
+			result.Append(readDiff(sourceReader, templateReader))
+		}
+		templateReader.Next()
+		sourceReader.Next()
+	}
+	return result
+}
+
+func (a *analyzer) checkLoop(n string) error {
+	if a.visit[n] {
+		return messages.DetectedInfiniteRecursiveEntry(append(a.visited, n)...)
+	}
+	return nil
 }
 
 func readDiff(actual, expected text.Reader) error {
@@ -79,10 +113,11 @@ func readDiff(actual, expected text.Reader) error {
 	for !actual.Done() && !expected.Done() {
 		r1 := actual.Next()
 		r2 := expected.Next()
-		if r1 != r2 {
-			sb1.WriteRune(r1)
-			sb2.WriteRune(r2)
+		if r1 == r2 {
+			break
 		}
+		sb1.WriteRune(r1)
+		sb2.WriteRune(r2)
 	}
 	if actual.Done() && !expected.Done() {
 		sb2.WriteString(expected.Finish())

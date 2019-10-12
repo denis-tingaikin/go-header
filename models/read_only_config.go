@@ -5,6 +5,8 @@ type ReadOnlyConfiguration interface {
 	GoroutineCount() int
 	ProjectDir() string
 	GoProject() bool
+	CopyrightHolders() []string
+	CustomPatterns() []CustomPattern
 }
 
 type readOnlyConfiguration struct {
@@ -23,6 +25,18 @@ func (r *readOnlyConfiguration) ProjectDir() string {
 
 func (r *readOnlyConfiguration) GoProject() bool {
 	return r.config.GoProject
+}
+
+func (r *readOnlyConfiguration) CopyrightHolders() []string {
+	result := make([]string, len(r.config.CopyrigtHolders))
+	copy(result, r.config.CopyrigtHolders)
+	return result
+}
+
+func (r *readOnlyConfiguration) CustomPatterns() []CustomPattern {
+	result := make([]CustomPattern, len(r.config.CustomPatterns))
+	copy(result, r.config.CustomPatterns)
+	return r.config.CustomPatterns
 }
 
 func AsReadonly(config *Configuration) ReadOnlyConfiguration {
