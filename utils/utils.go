@@ -26,20 +26,25 @@ func MakeFirstLetterUpercase(s string) string {
 	return builder.String()
 }
 
-//GoProjectFiles returns all .go files in dir. Excludes vendor folder.
-func GoProjectFiles(dir string) []string {
-	filterFunc := func(path string) bool {
-		relativePath := path[len(dir):]
-		return !strings.HasPrefix(relativePath, `\vendor`) && strings.HasSuffix(relativePath, ".go")
-	}
-	return files(dir, filterFunc)
+//IsSuitabeGoFile returns true if file has suffix .go and path contains vendor folder
+func IsSuitabeGoFile(path string) bool {
+	return !strings.Contains(path, "vendor\\") && strings.HasSuffix(path, ".go")
 }
 
-//Files returns all files into dir
-func Files(dir string) []string {
-	return files(dir, func(string) bool {
-		return true
+//AllFiles returns all files in dir
+func AllFiles(dir string) []string {
+	var files []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
 	})
+	if err != nil {
+		log.Printf("An error during scanning dir: %v. Error: %v", dir, err.Error())
+		return nil
+	}
+	return files
 }
 
 //SplitWork splits work
@@ -65,19 +70,4 @@ func SplitWork(work func(int), splitCount, totalWorkCount int) {
 		}()
 	}
 	wg.Wait()
-}
-
-func files(dir string, filterFunc func(string) bool) []string {
-	var files []string
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() && filterFunc(path) {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Printf("An error during scanning dir: %v. Error: %v", dir, err.Error())
-		return nil
-	}
-	return files
 }

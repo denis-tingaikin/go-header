@@ -30,8 +30,18 @@ func (g *Git) Author(path string) string {
 }
 
 //DiffFiles returns list of changed files
-func (g *Git) DiffFiles() []string {
-	out, err := g.do("diff", "--name-only")
+func (g *Git) DiffFiles(branch string) []string {
+	out, err := g.do("diff", "--name-only", branch)
+	if err != nil {
+		log.Printf("can't get diff: %v", messages.ErrorMsg(err))
+		return nil
+	}
+	return strings.Split(out, "\n")
+}
+
+//OnlyNewFiles returns list of new files
+func (g *Git) OnlyNewFiles(branch string) []string {
+	out, err := g.do("diff", "--name-only", "--diff-filter=A", branch)
 	if err != nil {
 		log.Printf("can't get diff: %v", messages.ErrorMsg(err))
 		return nil

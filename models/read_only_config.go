@@ -7,6 +7,7 @@ type ReadOnlyConfiguration interface {
 	GoProject() bool
 	ShowOnlyFirstError() bool
 	CopyrightHolders() []string
+	Scope() Scope
 	CustomPatterns() []CustomPattern
 }
 
@@ -36,6 +37,10 @@ func (r *readOnlyConfiguration) CopyrightHolders() []string {
 	result := make([]string, len(r.config.CopyrigtHolders))
 	copy(result, r.config.CopyrigtHolders)
 	return result
+}
+
+func (r *readOnlyConfiguration) Scope() Scope {
+	return r.config.Scope
 }
 
 func (r *readOnlyConfiguration) CustomPatterns() []CustomPattern {

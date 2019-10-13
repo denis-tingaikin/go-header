@@ -16,6 +16,7 @@ type Configuration struct {
 	Rules              []Rule          `yaml:"rules"`
 	CopyrigtHolders    []string        `yaml:"copyright-holders"`
 	CustomPatterns     []CustomPattern `yaml:"custom-patterns"`
+	Scope              Scope           `yaml:"scope"`
 }
 
 func (c *Configuration) FindRule(s *Source) *Rule {
@@ -48,6 +49,9 @@ func (c *Configuration) Validate() messages.ErrorList {
 		return result
 	}
 	c.checkRules(result)
+	if err := c.Scope.Validate(); err != nil {
+		result.Append(err)
+	}
 	return result
 }
 

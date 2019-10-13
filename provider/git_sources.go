@@ -24,10 +24,13 @@ func NewGitSources(config models.ReadOnlyConfiguration) Sources {
 
 func (g *gitSources) Get() []*models.Source {
 	var files []string
-	if g.config.GoProject() {
-		files = utils.GoProjectFiles(g.config.ProjectDir())
+	scope := g.config.Scope()
+	if scope.Policy == models.DiffOnlyPolicy {
+		files = g.Git.DiffFiles(scope.MasterBranch)
+	} else if scope.Policy == models.OnlyNewFilesPolicy {
+		files = g.Git.OnlyNewFiles(scope.MasterBranch)
 	} else {
-		files = utils.Files(g.config.ProjectDir())
+		files = utils.AllFiles(g.config.ProjectDir())
 	}
 	if len(files) == 0 {
 		return nil
@@ -35,6 +38,9 @@ func (g *gitSources) Get() []*models.Source {
 	result := make([]*models.Source, len(files))
 	utils.SplitWork(func(index int) {
 		file := files[index]
+		if g.config.GoProject() && !utils.IsSuitabeGoFile(file) {
+			return
+		}
 		author := g.Author(file)
 		source := &models.Source{
 			Path:   file,

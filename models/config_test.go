@@ -42,6 +42,9 @@ func TestConfig2(t *testing.T) {
 func TestConfig3(t *testing.T) {
 	config := Configuration{
 		Rules: []Rule{{}},
+		Scope: Scope{
+			Policy: NonePolicy,
+		},
 	}
 	actual := config.Validate()
 
@@ -61,10 +64,14 @@ func TestConfig4(t *testing.T) {
 		Rules: []Rule{{
 			Template: "Header...",
 		}},
+		Scope: Scope{
+			Policy: NonePolicy,
+		},
 	}
 	actual := config.Validate()
 
 	if !actual.Empty() {
+		println(actual.String())
 		t.Fail()
 	}
 }
@@ -75,6 +82,9 @@ func TestConfig5(t *testing.T) {
 			PathMatcher:   "[*]",
 			AuthorMatcher: "[*Author1*]",
 		}},
+		Scope: Scope{
+			Policy: NonePolicy,
+		},
 	}
 	actual := config.Validate()
 
@@ -89,6 +99,9 @@ func TestConfig6(t *testing.T) {
 			PathMatcher:   "*",
 			AuthorMatcher: "*Author1*",
 		}},
+		Scope: Scope{
+			Policy: NonePolicy,
+		},
 	}
 	actual := config.Validate()
 	if actual.Empty() {
@@ -110,6 +123,9 @@ func TestConfig7(t *testing.T) {
 			PathMatcher:   "[*]",
 			AuthorMatcher: "*Author1*",
 		}},
+		Scope: Scope{
+			Policy: NonePolicy,
+		},
 	}
 	actual := config.Validate()
 	if actual.Empty() {

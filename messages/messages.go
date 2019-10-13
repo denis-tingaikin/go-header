@@ -20,6 +20,14 @@ func CatNotParseAsYear() error {
 	return errors.New("can not parse as year")
 }
 
+func UnknownField(f string) error {
+	return fmt.Errorf("unknown field: %v", f)
+}
+
+func MasterBranchCanNotBeEmpty() error {
+	return errors.New("master branch can not be empty if scope.policy not equals none")
+}
+
 func DetectedInfiniteRecursiveEntry(entries ...string) error {
 	return fmt.Errorf("detected infinite recursive entry: \"%v\"", strings.Join(entries, "->"))
 }
