@@ -15,7 +15,7 @@ import (
 
 func main() {
 	pathToFile := flag.String("path", "go-header.yaml", "provides path to config.yaml file")
-	logging := flag.Bool("logging", true, "enables logging in to stdout")
+	logging := flag.Bool("logging", false, "enables logging in to stdout")
 	flag.Parse()
 	if !*logging {
 		utils.DisableLogging()

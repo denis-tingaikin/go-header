@@ -9,7 +9,6 @@ import (
 	"github.com/denis-tingajkin/go-header/messages"
 
 	"github.com/denis-tingajkin/go-header/text"
-	"github.com/denis-tingajkin/go-header/text/pattern"
 )
 
 type Analyser interface {
@@ -17,8 +16,6 @@ type Analyser interface {
 }
 
 func NewFromConfig(config models.ReadOnlyConfiguration) Analyser {
-	yearPattern := pattern.YearRange(config)
-	copyrightHolderPattern := pattern.CopyrightHolder(config)
 	customPatterns := map[string]*models.CustomPattern{}
 	configPatterns := config.CustomPatterns()
 	for i := range configPatterns {
@@ -27,17 +24,14 @@ func NewFromConfig(config models.ReadOnlyConfiguration) Analyser {
 		customPatterns[key] = pattern
 	}
 	return &analyzer{
-		patterns: map[string]pattern.Pattern{
-			yearPattern.Name():            yearPattern,
-			copyrightHolderPattern.Name(): copyrightHolderPattern,
-		},
 		customPatterns: customPatterns,
+		config:         config,
 	}
 }
 
 type analyzer struct {
-	patterns       map[string]pattern.Pattern
 	customPatterns map[string]*models.CustomPattern
+	config         models.ReadOnlyConfiguration
 }
 
 func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorList {
@@ -51,14 +45,14 @@ func (a *analyzer) Analyse(ctx context.Context, source string) messages.ErrorLis
 	templateReader := text.NewReader(template)
 	sourceReader := text.NewReader(source)
 
-	result := a.analyzeReaders(ctx, sourceReader, templateReader)
+	result := a.analyzeReaders(WithPatterns(ctx, a.config), sourceReader, templateReader)
 
 	if !templateReader.Done() {
-		result.Append(messages.AnalysisError(sourceReader.Position(), messages.Missed(templateReader.Finish())))
+		result.Append(messages.AnalysisError(sourceReader.Location(), messages.Missed(templateReader.Finish())))
 	}
 
 	if !sourceReader.Done() {
-		result.Append(messages.AnalysisError(templateReader.Position(), messages.NotExpected(sourceReader.Finish())))
+		result.Append(messages.AnalysisError(templateReader.Location(), messages.NotExpected(sourceReader.Finish())))
 	}
 	return result
 }
@@ -68,9 +62,9 @@ func (a *analyzer) analyzeReaders(ctx context.Context, sourceReader, templateRea
 	potentialErrors := messages.NewErrorList()
 	for !templateReader.Done() && !sourceReader.Done() {
 		if templateReader.Peek() == '{' {
-			start := templateReader.Position()
+			start := templateReader.Location()
 			patternName := strings.ToLower(a.readField(templateReader))
-			pattern := a.patterns[patternName]
+			pattern := FindPattern(ctx, patternName)
 			customPattern := a.customPatterns[patternName]
 			if err := a.checkLoop(ctx, patternName); err != nil {
 				result.Append(err)
@@ -125,7 +119,7 @@ func (a *analyzer) readMultiplePattern(ctx context.Context, source text.Reader, 
 }
 
 func (a *analyzer) readDiff(actual, expected text.Reader) error {
-	start := actual.Position()
+	start := actual.Location()
 	sb1 := strings.Builder{}
 	sb2 := strings.Builder{}
 	for !actual.Done() && !expected.Done() {

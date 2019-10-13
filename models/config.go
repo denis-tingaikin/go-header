@@ -8,13 +8,14 @@ import (
 )
 
 type Configuration struct {
-	Year            int             `yaml:"year"`
-	GoProject       bool            `yaml:"go-project"`
-	GoroutineCount  int             `yaml:"goroutine-count"`
-	ProjectDir      string          `yaml:"project_dir"`
-	Rules           []Rule          `yaml:"rules"`
-	CopyrigtHolders []string        `yaml:"copyright-holders"`
-	CustomPatterns  []CustomPattern `yaml:"custom-patterns"`
+	Year               int             `yaml:"year"`
+	GoProject          bool            `yaml:"go-project"`
+	GoroutineCount     int             `yaml:"goroutine-count"`
+	ProjectDir         string          `yaml:"project_dir"`
+	ShowOnlyFirstError bool            `yaml:"show-only-first-error"`
+	Rules              []Rule          `yaml:"rules"`
+	CopyrigtHolders    []string        `yaml:"copyright-holders"`
+	CustomPatterns     []CustomPattern `yaml:"custom-patterns"`
 }
 
 func (c *Configuration) FindRule(s *Source) *Rule {
@@ -61,6 +62,11 @@ func (c *Configuration) checkRules(errList messages.ErrorList) {
 			}
 			if rule.authorMatcher == nil && rule.AuthorMatcher != "" {
 				errList.Append(messages.CantProcessField(rule.AuthorMatcher, compileResult.Errors()[errIndex]))
+				errIndex++
+			}
+			if rule.excludePathMatcher == nil && rule.ExcludePathMatcher != "" {
+				errList.Append(messages.CantProcessField(rule.ExcludePathMatcher, compileResult.Errors()[errIndex]))
+				errIndex++
 			}
 		}
 		if err := rule.loadTemplate(); err != nil {

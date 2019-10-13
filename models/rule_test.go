@@ -1,11 +1,9 @@
 package models
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 	"testing"
 
 	"github.com/denis-tingajkin/go-header/messages"
@@ -42,8 +40,11 @@ func TestRule2(t *testing.T) {
 		t.FailNow()
 	}
 	actual := actualErr.Error()
-	expected := messages.CanNotLoadTemplateFromFile(errors.New("")).Error()
-	if !strings.Contains(actual, expected) {
+	_, err := os.Open("???")
+	expected := messages.CanNotLoadTemplateFromFile(err).Error()
+	if actual != expected {
+		println(actual)
+		println(expected)
 		t.FailNow()
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/denis-tingajkin/go-header/text"
 )
 
 //ErrorMsg returns const string if err is nil otherwise returns formated error
@@ -11,7 +13,7 @@ func ErrorMsg(err error) string {
 	if err == nil {
 		return "<error is nil>"
 	}
-	return fmt.Sprintf("Error: %v", err.Error())
+	return fmt.Sprintf("Error: \"%v\"", err.Error())
 }
 
 func CatNotParseAsYear() error {
@@ -19,13 +21,13 @@ func CatNotParseAsYear() error {
 }
 
 func DetectedInfiniteRecursiveEntry(entries ...string) error {
-	return fmt.Errorf("detected infinite recursive entry: %v", strings.Join(entries, "->"))
+	return fmt.Errorf("detected infinite recursive entry: \"%v\"", strings.Join(entries, "->"))
 }
 
 func Ambiguous(first ErrorList, second ErrorList) error {
 	firstText := first.String()
 	secondText := second.String()
-	return fmt.Errorf("ambiguous parser error:\nCase 1:\n%v\nCase 2:\n%v", firstText, secondText)
+	return fmt.Errorf("ambiguous parser error:\nCase 1:\n\"%v\"\nCase 2:\n\"%v\"", firstText, secondText)
 }
 
 func UnknownCopyrightHolder(position int, holder string, expectedHolders ...string) error {
@@ -33,11 +35,11 @@ func UnknownCopyrightHolder(position int, holder string, expectedHolders ...stri
 	if expected == "" {
 		expected = "any not empty string"
 	}
-	return fmt.Errorf("unknown copyright holder: \"%v\" at position %v. Expected: %v", holder, position, expected)
+	return fmt.Errorf("unknown copyright holder: \"%v\" at position %v. Expected: \"%v\"", holder, position, expected)
 }
 
 func CopyrightHolderAlreadyInUse(holder string) error {
-	return fmt.Errorf("copyright holder %v already in use", holder)
+	return fmt.Errorf("copyright holder \"%v\" already in use", holder)
 }
 
 func CanNotLoadTemplateFromFile(reason error) error {
@@ -49,7 +51,7 @@ func NoRules() error {
 }
 
 func IncorrectGoroutineCount(actual int) error {
-	return fmt.Errorf("incorrect goroutine count. Actual: %v. Expected: value should be more than zero", actual)
+	return fmt.Errorf("incorrect goroutine count. Actual: \"%v\". Expected: value should be more than zero", actual)
 }
 
 func CantProcessField(name string, err error) error {
@@ -71,12 +73,12 @@ func VerifyFuncNotProvided() error {
 func WrongYear() error {
 	return errors.New("expects the interval from the year the file was created to the current year")
 }
-func AnalysisError(position int, reason error) error {
-	return fmt.Errorf("position: %v, %v", position, ErrorMsg(reason))
+func AnalysisError(location text.Location, reason error) error {
+	return fmt.Errorf("position: %v, %v", location, ErrorMsg(reason))
 }
 
 func Diff(actual, expected interface{}) error {
-	return fmt.Errorf("expected:\n%v\nactual:\n%v", expected, actual)
+	return fmt.Errorf("expected:\n\"%v\"\nactual:\n\"%v\"", expected, actual)
 }
 
 func Missed(what string) error {

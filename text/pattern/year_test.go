@@ -42,7 +42,7 @@ func TestYearRange3(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	expected := messages.NewErrorList(messages.AnalysisError(0, messages.CatNotParseAsYear()))
+	expected := messages.NewErrorList(messages.AnalysisError(text.Location{}, messages.CatNotParseAsYear()))
 	if !expected.Equals(errs) {
 		t.FailNow()
 	}
@@ -55,7 +55,7 @@ func TestYearRange4(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	expected := messages.NewErrorList(messages.AnalysisError(0, messages.WrongYear()))
+	expected := messages.NewErrorList(messages.AnalysisError(text.Location{}, messages.WrongYear()))
 	if !errs.Equals(expected) {
 		t.FailNow()
 	}
@@ -68,7 +68,7 @@ func TestYearRange5(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	expected := messages.NewErrorList(messages.AnalysisError(0, messages.WrongYear()))
+	expected := messages.NewErrorList(messages.AnalysisError(text.Location{}, messages.WrongYear()))
 	if !expected.Equals(errs) {
 		println(errs.String())
 		t.FailNow()
@@ -82,7 +82,7 @@ func TestYearRange6(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	expected := messages.NewErrorList(messages.AnalysisError(5, messages.WrongYear()))
+	expected := messages.NewErrorList(messages.AnalysisError(text.Location{0, 5}, messages.WrongYear()))
 	if !expected.Equals(errs) {
 		t.FailNow()
 	}
@@ -94,7 +94,7 @@ func TestYearRange7(t *testing.T) {
 	if errs.Empty() && len(errs.Errors()) != 1 {
 		t.FailNow()
 	}
-	expected := messages.NewErrorList(messages.AnalysisError(5, messages.CatNotParseAsYear()))
+	expected := messages.NewErrorList(messages.AnalysisError(text.Location{0, 5}, messages.CatNotParseAsYear()))
 	if !expected.Equals(errs) {
 		t.FailNow()
 	}

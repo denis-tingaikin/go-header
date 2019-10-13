@@ -29,6 +29,16 @@ func (g *Git) Author(path string) string {
 	return authors[0]
 }
 
+//DiffFiles returns list of changed files
+func (g *Git) DiffFiles() []string {
+	out, err := g.do("diff", "--name-only")
+	if err != nil {
+		log.Printf("can't get diff: %v", messages.ErrorMsg(err))
+		return nil
+	}
+	return strings.Split(out, "\n")
+}
+
 func (g *Git) do(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = g.projectDir

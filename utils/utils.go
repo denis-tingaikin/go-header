@@ -30,7 +30,7 @@ func MakeFirstLetterUpercase(s string) string {
 func GoProjectFiles(dir string) []string {
 	filterFunc := func(path string) bool {
 		relativePath := path[len(dir):]
-		return !strings.HasPrefix(relativePath, `\vendor`) && strings.HasSuffix(relativePath, ".go") && !strings.HasSuffix(relativePath, "test.go")
+		return !strings.HasPrefix(relativePath, `\vendor`) && strings.HasSuffix(relativePath, ".go")
 	}
 	return files(dir, filterFunc)
 }

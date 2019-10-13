@@ -12,7 +12,7 @@ import (
 )
 
 func readNum(r text.Reader) (int, error) {
-	start := r.Position()
+	start := r.Location()
 	number := r.ReadWhile(unicode.IsDigit)
 	if number == "" {
 		return -1, messages.AnalysisError(start, messages.CatNotParseAsYear())
@@ -22,9 +22,9 @@ func readNum(r text.Reader) (int, error) {
 }
 
 func YearRange(config models.ReadOnlyConfiguration) Pattern {
-	return NewPatternFunc("year range",
+	return NewPatternFunc("year",
 		func(r text.Reader) messages.ErrorList {
-			start := r.Position()
+			start := r.Location()
 			result := messages.NewErrorList()
 			num, err := readNum(r)
 			if err != nil {
@@ -39,7 +39,7 @@ func YearRange(config models.ReadOnlyConfiguration) Pattern {
 				return result
 			}
 			r.Next()
-			start = r.Position()
+			start = r.Location()
 			num, err = readNum(r)
 			if err != nil {
 				result.Append(err)

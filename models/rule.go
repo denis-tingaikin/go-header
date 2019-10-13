@@ -8,12 +8,14 @@ import (
 )
 
 type Rule struct {
-	Template      string `yaml:"template"`
-	TemplatePath  string `yaml:"template-path"`
-	PathMatcher   string `yaml:"path-matcher"`
-	AuthorMatcher string `yaml:"author-matcher"`
-	authorMatcher *regexp.Regexp
-	pathMatcher   *regexp.Regexp
+	Template           string `yaml:"template"`
+	TemplatePath       string `yaml:"template-path"`
+	PathMatcher        string `yaml:"path-matcher"`
+	AuthorMatcher      string `yaml:"author-matcher"`
+	ExcludePathMatcher string `yaml:"exclude-path-matcher"`
+	authorMatcher      *regexp.Regexp
+	pathMatcher        *regexp.Regexp
+	excludePathMatcher *regexp.Regexp
 }
 
 func (r *Rule) loadTemplate() error {
@@ -43,12 +45,22 @@ func (r *Rule) Compile() messages.ErrorList {
 			result.Append(err)
 		}
 	}
+	if r.ExcludePathMatcher != "" {
+		if r.excludePathMatcher, err = regexp.Compile(r.ExcludePathMatcher); err != nil {
+			result.Append(err)
+		}
+	}
 	return result
 }
 
 func (r Rule) Match(s *Source) bool {
 	if r.pathMatcher != nil {
 		if !r.pathMatcher.MatchString(s.Path) {
+			return false
+		}
+	}
+	if r.excludePathMatcher != nil {
+		if r.excludePathMatcher.MatchString(s.Path) {
 			return false
 		}
 	}

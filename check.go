@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/denis-tingajkin/go-header/utils"
+	"github.com/fatih/color"
 
 	"github.com/denis-tingajkin/go-header/models"
 	"github.com/denis-tingajkin/go-header/provider"
@@ -37,8 +37,15 @@ func doCheck(config *models.Configuration) {
 		result := analyser.Analyse(ctx, source.Header())
 		if !result.Empty() {
 			pass = false
+			var msg string
+			if config.ShowOnlyFirstError {
+				msg = utils.MakeFirstLetterUpercase(result.Errors()[0].Error() + ".")
+			} else {
+				msg = result.String()
+			}
+			fmt.Printf("%v\n%v\n\n", source.Path, red(msg))
 		}
-		fmt.Printf("%v\n%v\n\n", source.Path, red(result.String()))
+
 	}, readOnlyConfig.GoroutineCount(), len(sources))
 	fmt.Printf("Elapsed: %v\n", time.Now().Sub(start))
 	if !pass {

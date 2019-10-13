@@ -1,6 +1,12 @@
 package analysis
 
-import "context"
+import (
+	"context"
+
+	"github.com/denis-tingajkin/go-header/models"
+
+	"github.com/denis-tingajkin/go-header/text/pattern"
+)
 
 type key string
 
@@ -8,7 +14,25 @@ const (
 	templateKey key = "template"
 	visitMap    key = "visit map"
 	visited     key = "visit"
+	patternsKey key = "patterns"
 )
+
+func WithPatterns(ctx context.Context, config models.ReadOnlyConfiguration) context.Context {
+	yearPattern := pattern.YearRange(config)
+	copyrightHolderPattern := pattern.CopyrightHolder(config)
+	patterns := map[string]pattern.Pattern{
+		yearPattern.Name():            yearPattern,
+		copyrightHolderPattern.Name(): copyrightHolderPattern,
+	}
+	return context.WithValue(ctx, patternsKey, patterns)
+}
+
+func FindPattern(ctx context.Context, name string) pattern.Pattern {
+	if v, ok := ctx.Value(patternsKey).(map[string]pattern.Pattern); ok {
+		return v[name]
+	}
+	return nil
+}
 
 func Template(ctx context.Context) string {
 	if v, ok := ctx.Value(templateKey).(string); ok {

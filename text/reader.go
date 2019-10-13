@@ -6,21 +6,27 @@ type Reader interface {
 	Done() bool
 	Finish() string
 	Position() int
+	Location() Location
 	SetPosition(int)
 	ReadWhile(func(rune) bool) string
 }
 
 func NewReader(text string) Reader {
-	return &reader{source: text, position: 0}
+	return &reader{source: text}
 }
 
 type reader struct {
 	source   string
 	position int
+	location Location
 }
 
 func (r *reader) Position() int {
 	return r.position
+}
+
+func (r *reader) Location() Location {
+	return r.location
 }
 
 func (r *reader) Peek() rune {
@@ -39,6 +45,12 @@ func (r *reader) Next() rune {
 		return rune(0)
 	}
 	reuslt := r.Peek()
+	if reuslt == '\n' {
+		r.location.Line++
+		r.location.Position = 0
+	} else {
+		r.location.Position++
+	}
 	r.position++
 	return reuslt
 }
@@ -56,6 +68,7 @@ func (r *reader) SetPosition(pos int) {
 		r.position = 0
 	}
 	r.position = pos
+	r.location = r.cacluteLocation()
 }
 
 func (r *reader) ReadWhile(match func(rune) bool) string {
@@ -71,4 +84,22 @@ func (r *reader) ReadWhile(match func(rune) bool) string {
 
 func (r *reader) till() {
 	r.position = len(r.source)
+	r.location = r.cacluteLocation()
+}
+
+func (r *reader) cacluteLocation() Location {
+	min := len(r.source)
+	if min > r.position {
+		min = r.position
+	}
+	x, y := 0, 0
+	for i := 0; i < min; i++ {
+		if r.source[i] == '\n' {
+			y++
+			x = 0
+		} else {
+			x++
+		}
+	}
+	return Location{Line: y, Position: x}
 }
