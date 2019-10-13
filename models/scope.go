@@ -7,9 +7,9 @@ import (
 type GitPolicy string
 
 const (
-	DiffOnlyPolicy     GitPolicy = "diff-only"
+	DiffOnlyPolicy     GitPolicy = "diff"
 	NonePolicy         GitPolicy = "none"
-	OnlyNewFilesPolicy GitPolicy = "only-new"
+	OnlyNewFilesPolicy GitPolicy = "new"
 )
 
 type Scope struct {

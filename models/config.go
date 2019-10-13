@@ -11,7 +11,7 @@ type Configuration struct {
 	Year               int             `yaml:"year"`
 	GoProject          bool            `yaml:"go-project"`
 	GoroutineCount     int             `yaml:"goroutine-count"`
-	ProjectDir         string          `yaml:"project_dir"`
+	ProjectDir         string          `yaml:"project-dir"`
 	ShowOnlyFirstError bool            `yaml:"show-only-first-error"`
 	Rules              []Rule          `yaml:"rules"`
 	CopyrigtHolders    []string        `yaml:"copyright-holders"`
