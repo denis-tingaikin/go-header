@@ -7,16 +7,26 @@ import (
 	"github.com/denis-tingajkin/go-header/messages"
 )
 
+//Configuration is main configuration of go-header linter
 type Configuration struct {
-	Year               int             `yaml:"year"`
-	GoProject          bool            `yaml:"go-project"`
-	GoroutineCount     int             `yaml:"goroutine-count"`
-	ProjectDir         string          `yaml:"project-dir"`
-	ShowOnlyFirstError bool            `yaml:"show-only-first-error"`
-	Rules              []Rule          `yaml:"rules"`
-	CopyrigtHolders    []string        `yaml:"copyright-holders"`
-	CustomPatterns     []CustomPattern `yaml:"custom-patterns"`
-	Scope              Scope           `yaml:"scope"`
+	//Year means current year for {YEAR} pattern
+	Year int `yaml:"year"`
+	//GoProject means include only go porject specific files
+	GoProject bool `yaml:"go-project"`
+	//GoroutineCount is a count of goroutines for async work
+	GoroutineCount int `yaml:"goroutine-count"`
+	//ProjectDir is path to scanning project
+	ProjectDir string `yaml:"project-dir"`
+	//ShowOnlyFirstError means print only the first error of finding errors
+	ShowOnlyFirstError bool `yaml:"show-only-first-error"`
+	//Rules means rules for file matching
+	Rules []Rule `yaml:"rules"`
+	//CopyrigtHolders means copyright holder for patter {copyright holder}. If empty means any copyright holder.
+	CopyrigtHolders []string `yaml:"copyright-holders"`
+	//CustomPatterns adds user's patterns
+	CustomPatterns []CustomPattern `yaml:"custom-patterns"`
+	//Scope provides scope for linting
+	Scope Scope `yaml:"scope"`
 }
 
 func (c *Configuration) FindRule(s *Source) *Rule {

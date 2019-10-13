@@ -12,9 +12,12 @@ const (
 	OnlyNewFilesPolicy GitPolicy = "new"
 )
 
+//Scope means the scope for go-header linter in project
 type Scope struct {
-	Policy       GitPolicy `yaml:"policy"`
-	MasterBranch string    `yaml:"master-branch"`
+	//Policy means file scoe policy. Can be "none", "diff", "new".
+	Policy GitPolicy `yaml:"policy"`
+	//MasterBranch master branch for scope. Used only if Policy is not "none".
+	MasterBranch string `yaml:"master-branch"`
 }
 
 func (s Scope) Validate() error {

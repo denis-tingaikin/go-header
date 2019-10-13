@@ -7,11 +7,17 @@ import (
 	"github.com/denis-tingajkin/go-header/messages"
 )
 
+//Rule means rule for matching files
 type Rule struct {
-	Template           string `yaml:"template"`
-	TemplatePath       string `yaml:"template-path"`
-	PathMatcher        string `yaml:"path-matcher"`
-	AuthorMatcher      string `yaml:"author-matcher"`
+	//Template means license header for files
+	Template string `yaml:"template"`
+	//TemplatePath means license header for files located to specific folder
+	TemplatePath string `yaml:"template-path"`
+	//PathMatcher means regex for file path
+	PathMatcher string `yaml:"path-matcher"`
+	//AuthorMatcher means author regex for authors
+	AuthorMatcher string `yaml:"author-matcher"`
+	//ExcludePathMatcher means regex pattern to exclude files
 	ExcludePathMatcher string `yaml:"exclude-path-matcher"`
 	authorMatcher      *regexp.Regexp
 	pathMatcher        *regexp.Regexp
