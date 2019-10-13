@@ -31,6 +31,20 @@ func IsSuitableGoFile(path string) bool {
 	return !strings.Contains(path, "vendor\\") && strings.HasSuffix(path, ".go")
 }
 
+func AddTabPerLine(s string) string {
+	lines := strings.Split(s, "\n")
+	sb := strings.Builder{}
+	length := len(lines)
+	for i := 0; i < length; i++ {
+		_, _ = sb.WriteRune('\t')
+		_, _ = sb.WriteString(lines[i])
+		if i+1 < length {
+			_, _ = sb.WriteRune('\n')
+		}
+	}
+	return sb.String()
+}
+
 //AllFiles returns all files in dir
 func AllFiles(dir string) []string {
 	var files []string

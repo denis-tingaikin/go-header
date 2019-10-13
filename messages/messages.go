@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/denis-tingajkin/go-header/text"
+	"github.com/denis-tingajkin/go-header/utils"
 )
 
 //ErrorMsg returns const string if err is nil otherwise returns formated error
@@ -13,7 +14,7 @@ func ErrorMsg(err error) string {
 	if err == nil {
 		return "<error is nil>"
 	}
-	return fmt.Sprintf("Error: \"%v\"", err.Error())
+	return fmt.Sprintf("Error: %v", utils.AddTabPerLine(err.Error()))
 }
 
 func CatNotParseAsYear() error {
@@ -29,17 +30,17 @@ func MasterBranchCanNotBeEmpty() error {
 }
 
 func DetectedInfiniteRecursiveEntry(entries ...string) error {
-	return fmt.Errorf("detected infinite recursive entry: \"%v\"", strings.Join(entries, "->"))
+	return fmt.Errorf("detected infinite recursive entry: \"%v\"", strings.Join(entries, " -> "))
 }
 
 func Ambiguous(first ErrorList, second ErrorList) error {
 	firstText := first.String()
 	secondText := second.String()
-	return fmt.Errorf("ambiguous parser error:\nCase 1:\n\"%v\"\nCase 2:\n\"%v\"", firstText, secondText)
+	return fmt.Errorf("ambiguous parser error:\nCase 1:\n %v\nCase 2:\n%v", utils.AddTabPerLine(firstText), utils.AddTabPerLine(secondText))
 }
 
 func UnknownCopyrightHolder(position int, holder string, expectedHolders ...string) error {
-	expected := strings.Join(expectedHolders, ",")
+	expected := strings.Join(expectedHolders, ", ")
 	if expected == "" {
 		expected = "any not empty string"
 	}
@@ -86,15 +87,17 @@ func AnalysisError(location text.Location, reason error) error {
 }
 
 func Diff(actual, expected interface{}) error {
-	return fmt.Errorf("expected:\n\"%v\"\nactual:\n\"%v\"", expected, actual)
+	actualText := utils.AddTabPerLine(fmt.Sprint(actual))
+	expectedText := utils.AddTabPerLine(fmt.Sprint(expected))
+	return fmt.Errorf("\nexpected:\n%v\nactual:\n%v", expectedText, actualText)
 }
 
 func Missed(what string) error {
-	return fmt.Errorf("missed: %v", what)
+	return fmt.Errorf("missed: %v", utils.AddTabPerLine(what))
 }
 
 func NotExpected(what string) error {
-	return fmt.Errorf("not expected text: %v", what)
+	return fmt.Errorf("not expected text: %v", utils.AddTabPerLine(what))
 }
 
 func NoHeader() error {
