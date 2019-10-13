@@ -26,8 +26,8 @@ func MakeFirstLetterUpercase(s string) string {
 	return builder.String()
 }
 
-//IsSuitabeGoFile returns true if file has suffix .go and path contains vendor folder
-func IsSuitabeGoFile(path string) bool {
+//IsSuitableGoFile returns true if file has suffix .go and path contains vendor folder
+func IsSuitableGoFile(path string) bool {
 	return !strings.Contains(path, "vendor\\") && strings.HasSuffix(path, ".go")
 }
 

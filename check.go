@@ -28,6 +28,9 @@ func doCheck(config *models.Configuration) {
 	red := color.New(color.FgRed).SprintFunc()
 	utils.SplitWork(func(index int) {
 		source := sources[index]
+		if source == nil {
+			return
+		}
 		rule := config.FindRule(source)
 		if rule == nil {
 			log.Printf("can not find rule for source: %v", source)

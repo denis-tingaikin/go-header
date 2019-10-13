@@ -23,9 +23,8 @@ func CopyrightHolder(config models.ReadOnlyConfiguration) Pattern {
 		start := r.Position()
 		result := messages.NewErrorList()
 		holder := r.ReadWhile(func(r rune) bool {
-			return r != '\n'
+			return r != '\n' && r != '.'
 		})
-
 		if !containsHolder(strings.ToLower(holder)) {
 			result.Append(messages.UnknownCopyrightHolder(start, holder, holders...))
 		} else {

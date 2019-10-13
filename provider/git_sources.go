@@ -2,6 +2,7 @@ package provider
 
 import (
 	"log"
+	"path"
 
 	"github.com/denis-tingajkin/go-header/models"
 	"github.com/denis-tingajkin/go-header/provider/git"
@@ -38,12 +39,16 @@ func (g *gitSources) Get() []*models.Source {
 	result := make([]*models.Source, len(files))
 	utils.SplitWork(func(index int) {
 		file := files[index]
-		if g.config.GoProject() && !utils.IsSuitabeGoFile(file) {
+		if g.config.GoProject() && !utils.IsSuitableGoFile(file) {
 			return
 		}
 		author := g.Author(file)
+		filePath := file
+		if scope.Policy != models.NonePolicy {
+			filePath = path.Join(g.config.ProjectDir(), filePath)
+		}
 		source := &models.Source{
-			Path:   file,
+			Path:   filePath,
 			Author: author,
 		}
 		result[index] = source
