@@ -1,5 +1,4 @@
 # go-header
-![alt text](https://i.ibb.co/w46m2SL/1e1116b54a5ed5566540786bb6f16b5ace23f57c.png)
 Go source code linter providing checks for license headers.
 
 # Installation
