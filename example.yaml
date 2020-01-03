@@ -1,5 +1,7 @@
 year: 2019
 goroutine-count: 2
+scope:
+  policy: none
 rules:
 - template: "/*\nCopyright {year} The Kubernetes Authors.\n\nLicensed under
     the Apache License, Version 2.0 (the \"License\");\nyou may not use this file
@@ -8,6 +10,8 @@ rules:
     the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS
     OF ANY KIND, either express or implied.\nSee the License for the specific language
     governing permissions and\nlimitations under the License.\n*/"
+  paths:
+    - ".*[.]go"
 - template: "/*\nLicensed to the Apache Software Foundation (ASF) under one\nor more
     contributor license agreements.  See the NOTICE file\ndistributed with this work
     for additional information\nregarding copyright ownership.  The ASF licenses this
@@ -18,4 +22,7 @@ rules:
     is distributed on an\n\"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\nKIND,
     either express or implied.  See the License for the\nspecific language governing
     permissions and limitations\nunder the License.\n*/"
-  author-matcher: .*@gmail.com
+  paths:
+    - ".*[.]go"
+  authors:
+    - ".*@gmail[.]com"
