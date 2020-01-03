@@ -11,8 +11,6 @@ import (
 type Configuration struct {
 	//Year means current year for {YEAR} pattern
 	Year int `yaml:"year"`
-	//GoProject means include only go porject specific files
-	GoProject bool `yaml:"go-project"`
 	//GoroutineCount is a count of goroutines for async work
 	GoroutineCount int `yaml:"goroutine-count"`
 	//ProjectDir is path to scanning project
@@ -69,19 +67,7 @@ func (c *Configuration) checkRules(errList messages.ErrorList) {
 	for i := range c.Rules {
 		rule := &c.Rules[i]
 		if compileResult := rule.Compile(); !compileResult.Empty() {
-			errIndex := 0
-			if rule.pathMatcher == nil && rule.PathMatcher != "" {
-				errList.Append(messages.CantProcessField(rule.PathMatcher, compileResult.Errors()[errIndex]))
-				errIndex++
-			}
-			if rule.authorMatcher == nil && rule.AuthorMatcher != "" {
-				errList.Append(messages.CantProcessField(rule.AuthorMatcher, compileResult.Errors()[errIndex]))
-				errIndex++
-			}
-			if rule.excludePathMatcher == nil && rule.ExcludePathMatcher != "" {
-				errList.Append(messages.CantProcessField(rule.ExcludePathMatcher, compileResult.Errors()[errIndex]))
-				errIndex++
-			}
+			errList.Append(compileResult.Errors()...)
 		}
 		if err := rule.loadTemplate(); err != nil {
 			errList.Append(err)

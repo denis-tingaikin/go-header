@@ -1,7 +1,6 @@
 package models
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/denis-tingajkin/go-header/messages"
@@ -78,9 +77,9 @@ func TestConfig4(t *testing.T) {
 func TestConfig5(t *testing.T) {
 	config := Configuration{
 		Rules: []Rule{{
-			Template:      "Header...",
-			PathMatcher:   "[*]",
-			AuthorMatcher: "[*Author1*]",
+			Template: "Header...",
+			Paths:    []string{"[*]"},
+			Authors:  []string{"[*Author1*]"},
 		}},
 		Scope: Scope{
 			Policy: NonePolicy,
@@ -95,9 +94,9 @@ func TestConfig5(t *testing.T) {
 func TestConfig6(t *testing.T) {
 	config := Configuration{
 		Rules: []Rule{{
-			Template:      "Header...",
-			PathMatcher:   "*",
-			AuthorMatcher: "*Author1*",
+			Template: "Header...",
+			Paths:    []string{"*"},
+			Authors:  []string{"*Author1*"},
 		}},
 		Scope: Scope{
 			Policy: NonePolicy,
@@ -107,21 +106,21 @@ func TestConfig6(t *testing.T) {
 	if actual.Empty() {
 		t.Fail()
 	}
-	_, err1 := regexp.Compile(config.Rules[0].PathMatcher)
-	_, err2 := regexp.Compile(config.Rules[0].AuthorMatcher)
-	expected := messages.NewErrorList(messages.CantProcessField(config.Rules[0].PathMatcher, err1), messages.CantProcessField(config.Rules[0].AuthorMatcher, err2))
+	_, err1 := compileRegularExpressions(config.Rules[0].Authors)
+	_, err2 := compileRegularExpressions(config.Rules[0].Paths)
+	expected := messages.NewErrorList(err1, err2)
 	if !actual.Equals(expected) {
 		println(actual.String())
-		println(expected)
+		println(expected.String())
 		t.Fail()
 	}
 }
 func TestConfig7(t *testing.T) {
 	config := Configuration{
 		Rules: []Rule{{
-			Template:      "Header...",
-			PathMatcher:   "[*]",
-			AuthorMatcher: "*Author1*",
+			Template: "Header...",
+			Paths:    []string{"[*]"},
+			Authors:  []string{"*Author1*"},
 		}},
 		Scope: Scope{
 			Policy: NonePolicy,
@@ -131,8 +130,8 @@ func TestConfig7(t *testing.T) {
 	if actual.Empty() {
 		t.Fail()
 	}
-	_, err := regexp.Compile(config.Rules[0].AuthorMatcher)
-	expected := messages.NewErrorList(messages.CantProcessField(config.Rules[0].AuthorMatcher, err))
+	_, err := compileRegularExpressions(config.Rules[0].Authors)
+	expected := messages.NewErrorList(err)
 	if !actual.Equals(expected) {
 		println(actual.String())
 		println(expected)
@@ -142,8 +141,8 @@ func TestConfig7(t *testing.T) {
 func TestConfig8(t *testing.T) {
 	config := Configuration{
 		Rules: []Rule{{
-			Template:      "Header...",
-			AuthorMatcher: ".*@company",
+			Template: "Header...",
+			Authors:  []string{".*@company"},
 		}},
 	}
 	s := Source{

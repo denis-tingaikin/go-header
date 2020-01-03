@@ -14,11 +14,11 @@ type Source struct {
 	Author string
 	Path   string
 	header string
-	readed bool
+	read   bool
 }
 
 func (s *Source) Header() string {
-	if s.readed {
+	if s.read {
 		return s.header
 	}
 	file, err := os.Open(s.Path)
@@ -27,7 +27,7 @@ func (s *Source) Header() string {
 		return ""
 	}
 	defer func() {
-		s.readed = true
+		s.read = true
 		_ = file.Close()
 	}()
 	s.header = readHeader(file)

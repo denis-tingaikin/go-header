@@ -39,9 +39,6 @@ func (g *gitSources) Get() []*models.Source {
 	result := make([]*models.Source, len(files))
 	utils.SplitWork(func(index int) {
 		file := files[index]
-		if g.config.GoProject() && !utils.IsSuitableGoFile(file) {
-			return
-		}
 		author := g.Author(file)
 		filePath := file
 		if scope.Policy != models.NonePolicy {

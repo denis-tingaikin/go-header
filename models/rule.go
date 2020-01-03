@@ -14,14 +14,14 @@ type Rule struct {
 	//TemplatePath means license header for files located to specific folder
 	TemplatePath string `yaml:"template-path"`
 	//PathMatcher means regex for file path
-	PathMatcher string `yaml:"path-matcher"`
+	Paths []string `yaml:"paths"`
 	//AuthorMatcher means author regex for authors
-	AuthorMatcher string `yaml:"author-matcher"`
+	Authors []string `yaml:"authors"`
 	//ExcludePathMatcher means regex pattern to exclude files
-	ExcludePathMatcher string `yaml:"exclude-path-matcher"`
-	authorMatcher      *regexp.Regexp
-	pathMatcher        *regexp.Regexp
-	excludePathMatcher *regexp.Regexp
+	ExcludePaths []string `yaml:"exclude-paths"`
+	authors      []*regexp.Regexp
+	paths        []*regexp.Regexp
+	excludePaths []*regexp.Regexp
 }
 
 func (r *Rule) loadTemplate() error {
@@ -41,37 +41,44 @@ func (r *Rule) loadTemplate() error {
 func (r *Rule) Compile() messages.ErrorList {
 	result := messages.NewErrorList()
 	var err error
-	if r.PathMatcher != "" {
-		if r.pathMatcher, err = regexp.Compile(r.PathMatcher); err != nil {
-			result.Append(err)
-		}
+	if r.authors, err = compileRegularExpressions(r.Authors); err != nil {
+		result.Append(err)
 	}
-	if r.AuthorMatcher != "" {
-		if r.authorMatcher, err = regexp.Compile(r.AuthorMatcher); err != nil {
-			result.Append(err)
-		}
+	if r.paths, err = compileRegularExpressions(r.Paths); err != nil {
+		result.Append(err)
 	}
-	if r.ExcludePathMatcher != "" {
-		if r.excludePathMatcher, err = regexp.Compile(r.ExcludePathMatcher); err != nil {
-			result.Append(err)
-		}
+	if r.excludePaths, err = compileRegularExpressions(r.ExcludePaths); err != nil {
+		result.Append(err)
 	}
 	return result
 }
 
 func (r Rule) Match(s *Source) bool {
-	if r.pathMatcher != nil {
-		if !r.pathMatcher.MatchString(s.Path) {
-			return false
-		}
+	if len(r.excludePaths) > 0 && anyMatch(r.excludePaths, s.Path) {
+		return false
 	}
-	if r.excludePathMatcher != nil {
-		if r.excludePathMatcher.MatchString(s.Path) {
-			return false
-		}
+	if len(r.paths) > 0 && !anyMatch(r.paths, s.Path) {
+		return false
 	}
-	if r.authorMatcher != nil {
-		if !r.authorMatcher.MatchString(s.Author) {
+	return len(r.authors) == 0 || anyMatch(r.authors, s.Author)
+}
+
+func compileRegularExpressions(regexpSources []string) ([]*regexp.Regexp, error) {
+	var result []*regexp.Regexp
+	for _, s := range regexpSources {
+		var r *regexp.Regexp
+		var err error
+		if r, err = regexp.Compile(s); err != nil {
+			return nil, messages.CantProcessField(s, err)
+		}
+		result = append(result, r)
+	}
+	return result, nil
+}
+
+func anyMatch(regexps []*regexp.Regexp, s string) bool {
+	for _, r := range regexps {
+		if !r.MatchString(s) {
 			return false
 		}
 	}

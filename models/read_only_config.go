@@ -4,7 +4,6 @@ type ReadOnlyConfiguration interface {
 	Year() int
 	GoroutineCount() int
 	ProjectDir() string
-	GoProject() bool
 	ShowOnlyFirstError() bool
 	CopyrightHolders() []string
 	Scope() Scope
@@ -21,12 +20,9 @@ func (r *readOnlyConfiguration) Year() int {
 func (r *readOnlyConfiguration) GoroutineCount() int {
 	return r.config.GoroutineCount
 }
+
 func (r *readOnlyConfiguration) ProjectDir() string {
 	return r.config.ProjectDir
-}
-
-func (r *readOnlyConfiguration) GoProject() bool {
-	return r.config.GoProject
 }
 
 func (r *readOnlyConfiguration) ShowOnlyFirstError() bool {
