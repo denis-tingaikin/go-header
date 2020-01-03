@@ -35,7 +35,7 @@ func TestRule2(t *testing.T) {
 	rule := Rule{
 		TemplatePath: "???",
 	}
-	actualErr := rule.loadTemplate()
+	actualErr := rule.loadTemplate("")
 	if actualErr == nil {
 		t.FailNow()
 	}

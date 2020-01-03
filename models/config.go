@@ -69,7 +69,7 @@ func (c *Configuration) checkRules(errList messages.ErrorList) {
 		if compileResult := rule.Compile(); !compileResult.Empty() {
 			errList.Append(compileResult.Errors()...)
 		}
-		if err := rule.loadTemplate(); err != nil {
+		if err := rule.loadTemplate(c.ProjectDir); err != nil {
 			errList.Append(err)
 		}
 	}

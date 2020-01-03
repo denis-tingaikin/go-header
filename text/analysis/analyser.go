@@ -116,9 +116,13 @@ func (a *analyzer) readMultiplePattern(ctx context.Context, source text.Reader, 
 		p := source.ReadWhile(text.LengthNotEqual(len(pattern.Separator)))
 		if p != pattern.Separator {
 			source.SetPosition(pop)
-			return messages.NewErrorList(messages.Missed(fmt.Sprintf("separator: \"%v\"", pattern.Name)))
+			return messages.NewErrorList(messages.Missed(fmt.Sprintf("separator for: \"%v\"", pattern.Name)))
 		}
-		errs := a.analyzeReaders(ctx, source, text.NewReader(pattern.Pattern))
+		patternReader := text.NewReader(pattern.Pattern)
+		errs := a.analyzeReaders(ctx, source, patternReader)
+		if !patternReader.Done() {
+			errs.Append(messages.Missed(patternReader.Finish()))
+		}
 		if !errs.Empty() {
 			source.SetPosition(pop)
 			return errs

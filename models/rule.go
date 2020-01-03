@@ -2,6 +2,7 @@ package models
 
 import (
 	"io/ioutil"
+	"path"
 	"regexp"
 
 	"github.com/denis-tingajkin/go-header/messages"
@@ -24,9 +25,9 @@ type Rule struct {
 	excludePaths []*regexp.Regexp
 }
 
-func (r *Rule) loadTemplate() error {
+func (r *Rule) loadTemplate(projectDir string) error {
 	if r.Template == "" && r.TemplatePath != "" {
-		bytes, err := ioutil.ReadFile(r.TemplatePath)
+		bytes, err := ioutil.ReadFile(path.Join(projectDir, r.TemplatePath))
 		if err != nil {
 			return messages.CanNotLoadTemplateFromFile(err)
 		}
