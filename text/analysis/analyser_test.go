@@ -167,10 +167,10 @@ func TestCustomPattern2(t *testing.T) {
 	expected := "a {my pattern}b"
 	actual := "a my text.!. 2007b"
 	ctx := WithTemplate(context.Background(), expected)
-	actaulResult := a.Analyse(ctx, actual)
+	actualResult := a.Analyse(ctx, actual)
 	expectedResult := messages.NewErrorList(messages.AnalysisError(text.Location{0, 10}, messages.Diff("!", ".")))
-	if !expectedResult.Equals(actaulResult) {
-		println(actaulResult.String())
+	if !expectedResult.Equals(actualResult) {
+		println(actualResult.String())
 		t.FailNow()
 	}
 }
@@ -188,24 +188,24 @@ func TestCustomPattern3(t *testing.T) {
 	expected := "{my pattern1}"
 	actual := "..."
 	ctx := WithTemplate(context.Background(), expected)
-	actaulResult := a.Analyse(ctx, actual)
+	actualResult := a.Analyse(ctx, actual)
 	expectedResult := messages.NewErrorList(
 		messages.DetectedInfiniteRecursiveEntry(myPattern1.Name, myPattern2.Name, myPattern1.Name),
 		messages.AnalysisError(text.Location{0, 13}, messages.NotExpected("...")))
-	if !expectedResult.Equals(actaulResult) {
-		println(actaulResult.String())
+	if !expectedResult.Equals(actualResult) {
+		println(actualResult.String())
 		t.FailNow()
 	}
 }
 
 func TestCustomPattern4(t *testing.T) {
 	myPattern := models.CustomPattern{
-		Name:          "my pattern",
-		Pattern:       "my text... {year}\n",
-		AllowMultiple: true,
+		Name:      "my pattern",
+		Pattern:   "my text... {year}",
+		Separator: "\n",
 	}
 	a := NewFromConfig(testConfigWithPatterns(myPattern))
-	expected := "a {my pattern}b"
+	expected := "a {my pattern}\nb"
 	actual := "a my text... 2007\nmy text... 2005-2007\nb"
 	ctx := WithTemplate(context.Background(), expected)
 	actaulResult := a.Analyse(ctx, actual)
@@ -217,22 +217,22 @@ func TestCustomPattern4(t *testing.T) {
 
 func TestCustomPattern5(t *testing.T) {
 	myPattern := models.CustomPattern{
-		Name:          "my pattern",
-		Pattern:       "my text... {year}\n",
-		AllowMultiple: true,
+		Name:      "my pattern",
+		Pattern:   "my text... {year}",
+		Separator: "//\n",
 	}
 	a := NewFromConfig(testConfigWithPatterns(myPattern))
-	expected := "a {my pattern}b"
-	actual := "a my text... 2007\nmy text... 2005-asd\nb"
+	expected := "a {my pattern}\nb"
+	actual := "a my text... 2007//\nmy text... 2005-asd\nb"
 	ctx := WithTemplate(context.Background(), expected)
-	actaulResult := a.Analyse(ctx, actual)
+	actualResult := a.Analyse(ctx, actual)
 	expectedResult := messages.NewErrorList(
 		messages.Ambiguous(
-			messages.NewErrorList(messages.AnalysisError(text.Location{1, 0}, messages.Diff("my text... 2005-asd\nb", "b"))),
-			messages.NewErrorList(messages.AnalysisError(text.Location{1, 16}, messages.CatNotParseAsYear()), messages.AnalysisError(text.Location{1, 16}, messages.Diff("asd\nb", "\n")))))
-	if !expectedResult.Equals(actaulResult) {
+			messages.NewErrorList(messages.AnalysisError(text.Location{0, 17}, messages.Diff("//\nmy text... 2005-asd\nb", "\nb"))),
+			messages.NewErrorList(messages.AnalysisError(text.Location{1, 16}, messages.CatNotParseAsYear()))))
+	if !expectedResult.Equals(actualResult) {
 		println(expectedResult.String())
-		println(actaulResult.String())
+		println(actualResult.String())
 		t.FailNow()
 	}
 }

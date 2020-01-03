@@ -68,7 +68,7 @@ func (r *reader) SetPosition(pos int) {
 		r.position = 0
 	}
 	r.position = pos
-	r.location = r.cacluteLocation()
+	r.location = r.calculateLocation()
 }
 
 func (r *reader) ReadWhile(match func(rune) bool) string {
@@ -84,10 +84,10 @@ func (r *reader) ReadWhile(match func(rune) bool) string {
 
 func (r *reader) till() {
 	r.position = len(r.source)
-	r.location = r.cacluteLocation()
+	r.location = r.calculateLocation()
 }
 
-func (r *reader) cacluteLocation() Location {
+func (r *reader) calculateLocation() Location {
 	min := len(r.source)
 	if min > r.position {
 		min = r.position

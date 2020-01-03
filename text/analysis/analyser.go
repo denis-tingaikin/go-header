@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/denis-tingajkin/go-header/models"
@@ -79,7 +80,7 @@ func (a *analyzer) analyzeReaders(ctx context.Context, sourceReader, templateRea
 				errs := a.analyzeReaders(ctx, sourceReader, text.NewReader(customPattern.Pattern))
 				if !errs.Empty() {
 					result.Append(errs.Errors()...)
-				} else if customPattern.AllowMultiple {
+				} else if customPattern.AllowMultiple() {
 					potentialErrors.Append(a.readMultiplePattern(ctx, sourceReader, customPattern).Errors()...)
 				}
 				ctx = Leave(ctx, patternName)
@@ -94,6 +95,9 @@ func (a *analyzer) analyzeReaders(ctx context.Context, sourceReader, templateRea
 		sourceReader.Next()
 	}
 	if !result.Empty() && !potentialErrors.Empty() {
+		if a.config.ShowOnlyFirstError() {
+			return messages.NewErrorList(messages.Ambiguous(messages.NewErrorList(result.Errors()[0]), messages.NewErrorList(potentialErrors.Errors()[0])))
+		}
 		return messages.NewErrorList(messages.Ambiguous(result, potentialErrors))
 	}
 	return result
@@ -106,10 +110,15 @@ func (a *analyzer) checkLoop(ctx context.Context, n string) error {
 	return nil
 }
 
-func (a *analyzer) readMultiplePattern(ctx context.Context, source text.Reader, patter *models.CustomPattern) messages.ErrorList {
+func (a *analyzer) readMultiplePattern(ctx context.Context, source text.Reader, pattern *models.CustomPattern) messages.ErrorList {
 	for !source.Done() {
 		pop := source.Position()
-		errs := a.analyzeReaders(ctx, source, text.NewReader(patter.Pattern))
+		p := source.ReadWhile(text.LengthNotEqual(len(pattern.Separator)))
+		if p != pattern.Separator {
+			source.SetPosition(pop)
+			return messages.NewErrorList(messages.Missed(fmt.Sprintf("separator: \"%v\"", pattern.Name)))
+		}
+		errs := a.analyzeReaders(ctx, source, text.NewReader(pattern.Pattern))
 		if !errs.Empty() {
 			source.SetPosition(pop)
 			return errs

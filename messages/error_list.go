@@ -31,7 +31,7 @@ func (l *errorList) String() string {
 		if err == nil {
 			continue
 		}
-		_, _ = sb.WriteString(utils.MakeFirstLetterUpercase(err.Error()))
+		_, _ = sb.WriteString(utils.MakeFirstLetterUppercase(err.Error()))
 		if i+1 < len(l.errors) {
 			_, _ = sb.WriteString("\n")
 		}

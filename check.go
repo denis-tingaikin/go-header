@@ -42,13 +42,12 @@ func doCheck(config *models.Configuration) {
 			pass = false
 			var msg string
 			if config.ShowOnlyFirstError {
-				msg = utils.MakeFirstLetterUpercase(result.Errors()[0].Error() + ".")
+				msg = utils.MakeFirstLetterUppercase(result.Errors()[0].Error() + "...")
 			} else {
 				msg = result.String()
 			}
 			fmt.Printf("%v\n%v\n\n", source.Path, red(msg))
 		}
-
 	}, readOnlyConfig.GoroutineCount(), len(sources))
 	fmt.Printf("Elapsed: %v\n", time.Now().Sub(start))
 	if !pass {

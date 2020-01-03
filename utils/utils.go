@@ -15,8 +15,8 @@ func DisableLogging() {
 	log.SetOutput(ioutil.Discard)
 }
 
-//MakeFirstLetterUpercase makes first latter of string uppercase
-func MakeFirstLetterUpercase(s string) string {
+//MakeFirstLetterUppercase makes first latter of string uppercase
+func MakeFirstLetterUppercase(s string) string {
 	if len(s) == 0 {
 		return s
 	}
