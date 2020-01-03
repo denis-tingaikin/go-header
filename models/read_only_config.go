@@ -4,7 +4,7 @@ type ReadOnlyConfiguration interface {
 	Year() int
 	GoroutineCount() int
 	ProjectDir() string
-	ShowOnlyFirstError() bool
+	ShowAllErrors() bool
 	CopyrightHolders() []string
 	Scope() Scope
 	CustomPatterns() []CustomPattern
@@ -25,8 +25,8 @@ func (r *readOnlyConfiguration) ProjectDir() string {
 	return r.config.ProjectDir
 }
 
-func (r *readOnlyConfiguration) ShowOnlyFirstError() bool {
-	return r.config.ShowOnlyFirstError
+func (r *readOnlyConfiguration) ShowAllErrors() bool {
+	return r.config.ShowAllErrors
 }
 
 func (r *readOnlyConfiguration) CopyrightHolders() []string {

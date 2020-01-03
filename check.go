@@ -41,15 +41,15 @@ func doCheck(config *models.Configuration) {
 		if !result.Empty() {
 			pass = false
 			var msg string
-			if config.ShowOnlyFirstError {
-				msg = utils.MakeFirstLetterUppercase(result.Errors()[0].Error() + "...")
-			} else {
+			if config.ShowAllErrors {
 				msg = result.String()
+			} else {
+				msg = utils.MakeFirstLetterUppercase(result.Errors()[0].Error())
 			}
 			fmt.Printf("%v\n%v\n\n", source.Path, red(msg))
 		}
 	}, readOnlyConfig.GoroutineCount(), len(sources))
-	fmt.Printf("Elapsed: %v\n", time.Now().Sub(start))
+	log.Printf("Elapsed: %v\n", time.Now().Sub(start))
 	if !pass {
 		os.Exit(1)
 	}

@@ -95,10 +95,10 @@ func (a *analyzer) analyzeReaders(ctx context.Context, sourceReader, templateRea
 		sourceReader.Next()
 	}
 	if !result.Empty() && !potentialErrors.Empty() {
-		if a.config.ShowOnlyFirstError() {
-			return messages.NewErrorList(messages.Ambiguous(messages.NewErrorList(result.Errors()[0]), messages.NewErrorList(potentialErrors.Errors()[0])))
+		if a.config.ShowAllErrors() {
+			return messages.NewErrorList(messages.Ambiguous(result, potentialErrors))
 		}
-		return messages.NewErrorList(messages.Ambiguous(result, potentialErrors))
+		return messages.NewErrorList(messages.Ambiguous(messages.NewErrorList(result.Errors()[0]), messages.NewErrorList(potentialErrors.Errors()[0])))
 	}
 	return result
 }

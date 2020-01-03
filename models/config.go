@@ -15,8 +15,8 @@ type Configuration struct {
 	GoroutineCount int `yaml:"goroutine-count"`
 	//ProjectDir is path to scanning project
 	ProjectDir string `yaml:"project-dir"`
-	//ShowOnlyFirstError means print only the first error of finding errors
-	ShowOnlyFirstError bool `yaml:"show-only-first-error"`
+	//ShowAllErrors means print only the first error of finding errors
+	ShowAllErrors bool `yaml:"show-all-errors"`
 	//Rules means rules for file matching
 	Rules []Rule `yaml:"rules"`
 	//CopyrigtHolders means copyright holder for patter {copyright holder}. If empty means any copyright holder.
