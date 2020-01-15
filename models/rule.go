@@ -55,10 +55,10 @@ func (r *Rule) Compile() messages.ErrorList {
 }
 
 func (r Rule) Match(s *Source) bool {
-	if len(r.excludePaths) > 0 && anyMatch(r.excludePaths, s.Path) {
+	if len(r.excludePaths) != 0 && anyMatch(r.excludePaths, s.Path) {
 		return false
 	}
-	if len(r.paths) > 0 && !anyMatch(r.paths, s.Path) {
+	if len(r.paths) != 0 && !anyMatch(r.paths, s.Path) {
 		return false
 	}
 	return len(r.authors) == 0 || anyMatch(r.authors, s.Author)
@@ -79,9 +79,9 @@ func compileRegularExpressions(regexpSources []string) ([]*regexp.Regexp, error)
 
 func anyMatch(regexps []*regexp.Regexp, s string) bool {
 	for _, r := range regexps {
-		if !r.MatchString(s) {
-			return false
+		if r.MatchString(s) {
+			return true
 		}
 	}
-	return true
+	return false
 }

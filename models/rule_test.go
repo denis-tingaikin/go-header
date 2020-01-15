@@ -48,3 +48,30 @@ func TestRule2(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestRule3(t *testing.T) {
+	rule := Rule{
+		ExcludePaths: []string{
+			"B",
+			"A",
+		},
+	}
+	errs := rule.Compile()
+
+	if !errs.Empty() {
+		t.FailNow()
+	}
+
+	actual := rule.Match(&Source{
+		Path: "A",
+	})
+	if actual {
+		t.FailNow()
+	}
+	actual = rule.Match(&Source{
+		Path: "B",
+	})
+	if actual {
+		t.FailNow()
+	}
+}
