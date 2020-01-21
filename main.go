@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/denis-tingajkin/go-header/version"
 	"io/ioutil"
 	"os"
 
@@ -14,6 +15,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "version" {
+		println(version.Get())
+		return
+	}
 	pathToFile := flag.String("path", ".go-header.yaml", "provides path to config.yaml file")
 	logging := flag.Bool("logging", false, "enables logging in to stdout")
 	flag.Parse()

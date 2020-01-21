@@ -17,13 +17,13 @@ func CopyrightHolder(config models.ReadOnlyConfiguration) Pattern {
 		holdersMap[key] = true
 	}
 	containsHolder := func(h string) bool {
-		return (holdersMap[h] || (len(holders) == 0 && h != ""))
+		return holdersMap[h] || (len(holders) == 0 && h != "")
 	}
 	return NewPatternFunc("copyright holder", func(r text.Reader) messages.ErrorList {
 		start := r.Position()
 		result := messages.NewErrorList()
 		holder := r.ReadWhile(func(r rune) bool {
-			return r != '\n' && r != '.'
+			return r != '\n'
 		})
 		if !containsHolder(strings.ToLower(holder)) {
 			result.Append(messages.UnknownCopyrightHolder(start, holder, holders...))

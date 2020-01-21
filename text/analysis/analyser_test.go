@@ -240,12 +240,12 @@ func TestCustomPattern5(t *testing.T) {
 func TestCustomPattern6(t *testing.T) {
 	myPattern := models.CustomPattern{
 		Name:      "my pattern",
-		Pattern:   "{COPYRIGHT HOLDER}. {year}",
+		Pattern:   "{COPYRIGHT HOLDER}\n {year}",
 		Separator: "//",
 	}
 	a := NewFromConfig(testConfigWithPatterns(myPattern))
 	expected := "{my pattern}//test"
-	actual := "ABC. 2007//test"
+	actual := "ABC\n 2007//test"
 	ctx := WithTemplate(context.Background(), expected)
 	actualResult := a.Analyse(ctx, actual)
 	if !actualResult.Empty() {
