@@ -1,4 +1,6 @@
 # go-header
+[![Actions Status](https://github.com/denis-tingajkin/go-header/workflows/ci/badge.svg)](https://github.com/denis-tingajkin/go-header/actions)
+
 Go source code linter providing checks for license headers.
 
 # Installation
