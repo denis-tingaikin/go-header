@@ -34,6 +34,10 @@ func (s *Source) Header() string {
 	return s.header
 }
 
+func (s *Source) Read() bool {
+	return s.read
+}
+
 func readHeader(reader io.Reader) string {
 	result := strings.Builder{}
 	r := bufio.NewReader(reader)

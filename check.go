@@ -36,8 +36,13 @@ func doCheck(config *models.Configuration) {
 			log.Printf("can not find rule for source: %v", source)
 			return
 		}
+		header := source.Header()
+		if !source.Read() {
+			log.Printf("file does not exist: %v", source.Path)
+			return
+		}
 		ctx := analysis.WithTemplate(context.Background(), rule.Template)
-		result := analyser.Analyse(ctx, source.Header())
+		result := analyser.Analyse(ctx, header)
 		if !result.Empty() {
 			pass = false
 			var msg string
