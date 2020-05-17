@@ -1,0 +1,115 @@
+package goheader_test
+
+import (
+	"github.com/denis-tingajkin/go-header"
+	"github.com/stretchr/testify/require"
+	"go/ast"
+	"go/token"
+	"testing"
+)
+
+func header(header string) *ast.File {
+	return &ast.File{
+		Comments: []*ast.CommentGroup{
+			{
+				List: []*ast.Comment{
+					{
+						Text: header,
+					},
+				},
+			},
+		},
+		Package: token.Pos(len(header)),
+	}
+}
+
+func TestAnalyzer_Analyze1(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("A {{ YEAR }}\nB"),
+		goheader.WithValues(map[string]goheader.Value{
+			"YEAR": &goheader.ConstValue{
+				RawValue: "2020",
+			},
+		}))
+	issue := a.Analyze(header(`A 2020
+B`))
+	require.Nil(t, issue)
+}
+
+func TestAnalyzer_Analyze2(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
+		goheader.WithValues(map[string]goheader.Value{
+			"COPYRIGHT HOLDER": &goheader.RegexpValue{
+				RawValue: "(A {{ YEAR }}\n(.*)\n)+",
+			},
+			"YEAR": &goheader.ConstValue{
+				RawValue: "2020",
+			},
+		}))
+	issue := a.Analyze(header(`A 2020
+B
+A 2020
+B
+TEXT
+`))
+	require.Nil(t, issue)
+}
+
+func TestAnalyzer_Analyze3(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
+		goheader.WithValues(map[string]goheader.Value{
+			"COPYRIGHT HOLDER": &goheader.RegexpValue{
+				RawValue: "(A {{ YEAR }}\n(.*)\n)+",
+			},
+			"YEAR": &goheader.ConstValue{
+				RawValue: "2020",
+			},
+		}))
+	issue := a.Analyze(header(`A 2020
+B
+A 2021
+B
+TEXT
+`))
+	require.NotNil(t, issue)
+}
+
+func TestREADME(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate(`{{ MY COMPANY }}
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.`),
+		goheader.WithValues(map[string]goheader.Value{
+			"MY COMPANY": &goheader.ConstValue{
+				RawValue: "mycompany.com",
+			},
+		}))
+	issue := a.Analyze(header(`mycompany.com
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.`))
+	require.Nil(t, issue)
+}

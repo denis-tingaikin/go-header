@@ -8,76 +8,52 @@ Go source code linter providing checks for license headers.
 For installation you can simply use `go get`.
 
 ```
-go get github.com/denis-tingajkin/go-header
+go get github.com/denis-tingajkin/go-header/cmd/go-header
 ```
 
 # Configuration
 
 For configuring `go-header` linter you simply need to fill the next structures in YAML format.
-```
+```go
+// Configuration represents go-header linter setup parameters
 type Configuration struct {
-	Year               int             `yaml:"year"`
-	GoProject          bool            `yaml:"go-project"`
-	GoroutineCount     int             `yaml:"goroutine-count"`
-	ProjectDir         string          `yaml:"project-dir"`
-	ShowOnlyFirstError bool            `yaml:"show-only-first-error"`
-	Rules              []Rule          `yaml:"rules"`
-	CopyrigtHolders    []string        `yaml:"copyright-holders"`
-	CustomPatterns     []CustomPattern `yaml:"custom-patterns"`
-	Scope              Scope           `yaml:"scope"`
+	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
+	Values       map[string]map[string]string `yaml:"values"'`
+	// Template is template for checking. Uses values.
+	Template     string                       `yaml:"template"`
+	// TemplatePath path to the template file. Useful if need to load the template from a specific file.
+	TemplatePath string                       `yaml:"template-path"`
 }
 ```
-Scope structure
+
+# Examples
+
+## Step 1
+Create configuration file for `go-header` cmd in the root of project.
+```yaml
+---
+values:
+  const:
+    MY COMPANY: mycompany.com
+templatePath: ./mypath/mytemplate.txt
 ```
-//Scope means the scope for go-header linter in project
-type Scope struct {
-	//Policy means file scoe policy. Can be "none", "diff", "new".
-	Policy GitPolicy `yaml:"policy"`
-	//MasterBranch master branch for scope. Used only if Policy is not "none".
-	MasterBranch string `yaml:"master-branch"`
-}
+## Step 2 
+Write the template file. For example for config above `mytemplate.txt` could be
+```text
+{{ MY COMPANY }}
+SPDX-License-Identifier: Apache-2.0
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ```
-Custom patterns structure:
-```
-//CustomPattern represents user's patter
-type CustomPattern struct {
-	//Name means name of pattern
-	Name string `yaml:"name"`
-	//Pattern represnts source of patter
-	Pattern string `yaml:"pattern"`
-	//AllowMultiple means pattern can be repeated one or more times.
-	AllowMultiple bool `yaml:"allow_multiple"`
-}
-```
-Rule structure:
-```
-//Rule means rule for matching files
-type Rule struct {
-	//Template means license header for files
-	Template string `yaml:"template"`
-	//TemplatePath reads header from specific folder 
-	TemplatePath string `yaml:"template-path"`
-	//PathMatcher means regex for file path
-	PathMatcher string `yaml:"path-matcher"`
-	//AuthorMatcher means author regex for authors
-	AuthorMatcher string `yaml:"author-matcher"`
-	//ExcludePathMatcher means regex pattern to exclude files
-	ExcludePathMatcher string `yaml:"exclude-path-matcher"`
-	authorMatcher      *regexp.Regexp
-	pathMatcher        *regexp.Regexp
-	excludePathMatcher *regexp.Regexp
-}
-
-```
-
-# Flags
-
-`-logging=true` means enable logging. Useful for bug reporting.
-
-`-path=...` means path to go-header .yaml configuraiton.
-
-
-
-
-
+## Step 3 
+You are ready! Execute `go-header`. 

@@ -1,4 +1,4 @@
-package text
+package goheader
 
 type Reader interface {
 	Peek() rune

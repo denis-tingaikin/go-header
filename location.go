@@ -1,4 +1,4 @@
-package text
+package goheader
 
 import "fmt"
 
@@ -8,5 +8,5 @@ type Location struct {
 }
 
 func (l Location) String() string {
-	return fmt.Sprintf("%v:%v", l.Line, l.Position)
+	return fmt.Sprintf("%v:%v", l.Line+1, l.Position)
 }
