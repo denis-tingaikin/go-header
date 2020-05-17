@@ -13,7 +13,7 @@ go get github.com/denis-tingajkin/go-header/cmd/go-header
 
 # Configuration
 
-For configuring `go-header` linter you simply need to fill the next structures in YAML format.
+To configuring `go-header.yaml` linter you simply need to fill the next structures in YAML format.
 ```go
 // Configuration represents go-header linter setup parameters
 type Configuration struct {
@@ -29,13 +29,13 @@ type Configuration struct {
 # Examples
 
 ## Step 1
-Create configuration file for `go-header` cmd in the root of project.
+Create configuration file  `.go-header.yaml` cmd in the root of project.
 ```yaml
 ---
 values:
   const:
     MY COMPANY: mycompany.com
-templatePath: ./mypath/mytemplate.txt
+template-path: ./mypath/mytemplate.txt
 ```
 ## Step 2 
 Write the template file. For example for config above `mytemplate.txt` could be
@@ -56,4 +56,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 ## Step 3 
-You are ready! Execute `go-header`. 
+You are ready! Execute `go-header` from the root of the project. 
