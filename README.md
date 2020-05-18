@@ -29,7 +29,7 @@ type Configuration struct {
 # Examples
 
 ## Step 1
-Create configuration file  `.go-header.yaml` cmd in the root of project.
+Create configuration file  `.go-header.yaml` in the root of project.
 ```yaml
 ---
 values:
