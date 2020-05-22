@@ -65,13 +65,11 @@ func (c *ConstValue) Read(s Reader) Issue {
 	p := s.Position()
 	for _, ch := range c.Get() {
 		if ch != s.Peek() {
-			min := len(c.Get())
 			s.SetPosition(p)
-			f := s.Finish()
-			if min > len(f) {
-				min = len(f)
-			}
-			return NewIssueWithLocation(fmt.Sprintf("Expected:%v, actual: %v", c.Get(), f[:min]), l)
+			f := s.ReadWhile(func(r rune) bool {
+				return r != '\n'
+			})
+			return NewIssueWithLocation(fmt.Sprintf("Expected:%v, Actual: %v", c.Get(), f), l)
 		}
 		s.Next()
 	}
