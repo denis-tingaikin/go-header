@@ -22,13 +22,14 @@ func calculateValue(calculable Calculable, values map[string]Value) (string, err
 	r := calculable.Get()
 	var endIndex int
 	var startIndex int
-	for startIndex = strings.Index(r, "{{"); startIndex > 0; startIndex = strings.Index(r[startIndex:], "{{") {
+	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
 		_, _ = sb.WriteString(r[:startIndex])
 		endIndex = strings.Index(r, "}}")
 		if endIndex < 0 {
 			return "", errors.New("missed value ending")
 		}
 		subVal := strings.TrimSpace(r[startIndex+2 : endIndex])
+		println(subVal)
 		if val := values[subVal]; val != nil {
 			if err := val.Calculate(values); err != nil {
 				return "", err
@@ -38,8 +39,9 @@ func calculateValue(calculable Calculable, values map[string]Value) (string, err
 			return "", fmt.Errorf("unknown value name %v", subVal)
 		}
 		endIndex += 2
+		r = r[endIndex:]
 	}
-	_, _ = sb.WriteString(r[endIndex:])
+	_, _ = sb.WriteString(r)
 	return sb.String(), nil
 }
 

@@ -76,6 +76,30 @@ TEXT
 	require.NotNil(t, issue)
 }
 
+func TestAnalyzer_Analyze4(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("{{ A }}"),
+		goheader.WithValues(map[string]goheader.Value{
+			"A": &goheader.RegexpValue{
+				RawValue: "[{{ B }}{{ C }}]{{D}}",
+			},
+			"B": &goheader.ConstValue{
+				RawValue: "a-",
+			},
+			"C": &goheader.RegexpValue{
+				RawValue: "z",
+			},
+			"D": &goheader.ConstValue{
+				RawValue: "{{E}}",
+			},
+			"E": &goheader.ConstValue{
+				RawValue: "{7}",
+			},
+		}))
+	issue := a.Analyze(header(`abcdefg`))
+	require.Nil(t, issue)
+}
+
 func TestREADME(t *testing.T) {
 	a := goheader.New(
 		goheader.WithTemplate(`{{ MY COMPANY }}
