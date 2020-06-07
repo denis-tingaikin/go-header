@@ -21,8 +21,13 @@ func (a *analyzer) Analyze(file *ast.File) Issue {
 	}
 	var header string
 	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
-		header = strings.TrimSpace(file.Comments[0].Text())
+		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
+			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
+		} else {
+			header = file.Comments[0].Text()
+		}
 	}
+	header = strings.TrimSpace(header)
 	if header == "" {
 		return NewIssue("Missed header for check")
 	}
@@ -75,7 +80,7 @@ func (a *analyzer) readField(reader Reader) string {
 	_ = reader.Next()
 	_ = reader.Next()
 
-	return strings.TrimSpace(r)
+	return strings.ToLower(strings.TrimSpace(r))
 }
 
 func New(options ...AnalyzerOption) Analyzer {

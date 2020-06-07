@@ -28,8 +28,7 @@ func calculateValue(calculable Calculable, values map[string]Value) (string, err
 		if endIndex < 0 {
 			return "", errors.New("missed value ending")
 		}
-		subVal := strings.TrimSpace(r[startIndex+2 : endIndex])
-		println(subVal)
+		subVal := strings.ToLower(strings.TrimSpace(r[startIndex+2 : endIndex]))
 		if val := values[subVal]; val != nil {
 			if err := val.Calculate(values); err != nil {
 				return "", err

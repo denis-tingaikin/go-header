@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"strings"
 )
 
 // Configuration represents go-header linter setup parameters
@@ -27,7 +28,8 @@ func (c *Configuration) GetValues() (map[string]Value, error) {
 	}
 	appendValues := func(m map[string]string, create func(string) Value) {
 		for k, v := range m {
-			result[k] = create(v)
+			key := strings.ToLower(k)
+			result[key] = create(v)
 		}
 	}
 	for k, v := range c.Values {

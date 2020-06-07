@@ -4,7 +4,11 @@ import (
 	"github.com/denis-tingajkin/go-header"
 	"github.com/stretchr/testify/require"
 	"go/ast"
+	"go/parser"
 	"go/token"
+	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 )
 
@@ -98,6 +102,20 @@ func TestAnalyzer_Analyze4(t *testing.T) {
 		}))
 	issue := a.Analyze(header(`abcdefg`))
 	require.Nil(t, issue)
+}
+
+func TestAnalyzer_Analyze5(t *testing.T) {
+	a := goheader.New(goheader.WithTemplate("abc"))
+	p := path.Join(os.TempDir(), t.Name()+".go")
+	defer func() {
+		_ = os.Remove(p)
+	}()
+	err := ioutil.WriteFile(p, []byte("/*abc*///comment\npackage abc"), os.ModePerm)
+	require.Nil(t, err)
+	s := token.NewFileSet()
+	f, err := parser.ParseFile(s, p, nil, parser.ParseComments)
+	require.Nil(t, err)
+	require.Nil(t, a.Analyze(f))
 }
 
 func TestREADME(t *testing.T) {

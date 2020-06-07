@@ -1,5 +1,7 @@
 package goheader
 
+import "strings"
+
 type AnalyzerOption interface {
 	apply(*analyzer)
 }
@@ -12,7 +14,10 @@ func (f applyAnalyzerOptionFunc) apply(a *analyzer) {
 
 func WithValues(values map[string]Value) AnalyzerOption {
 	return applyAnalyzerOptionFunc(func(a *analyzer) {
-		a.values = values
+		a.values = make(map[string]Value)
+		for k, v := range values {
+			a.values[strings.ToLower(k)] = v
+		}
 	})
 }
 
