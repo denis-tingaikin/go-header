@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-const configPath = ".go-header.yaml"
+const configPath = ".go-header.yml"
 
 type issue struct {
 	goheader.Issue

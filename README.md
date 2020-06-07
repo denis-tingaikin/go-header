@@ -13,7 +13,7 @@ go get github.com/denis-tingajkin/go-header/cmd/go-header
 
 # Configuration
 
-To configuring `go-header.yaml` linter you simply need to fill the next structures in YAML format.
+To configuring `go-header.yml` linter you simply need to fill the next structures in YAML format.
 ```go
 // Configuration represents go-header linter setup parameters
 type Configuration struct {
