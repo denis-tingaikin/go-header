@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	goheader "github.com/denis-tingajkin/go-header"
+	"github.com/denis-tingajkin/go-header/version"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"go/parser"
@@ -21,6 +22,12 @@ func main() {
 	paths := os.Args[1:]
 	if len(paths) == 0 {
 		logrus.Fatal("Paths has not passed")
+	}
+	if len(paths) == 1 {
+		if paths[0] == "version" {
+			fmt.Println(version.Value())
+			return
+		}
 	}
 	c := &goheader.Configuration{}
 	if err := c.Parse(configPath); err != nil {

@@ -25,8 +25,18 @@ type Configuration struct {
 	TemplatePath string                       `yaml:"template-path"`
 }
 ```
+Where supported two kinds of values: `const` and `regexp`. NOTE: values can be used recursively. 
+Values ​​with type `const` checks on equality.
+Values ​​with type `regexp` checks on the match.
 
-# Examples
+# Execution
+
+`go-header` linter expects file path on input. If you want to run `go-header` only on diff files, then you can use this command
+```bash
+go-header $(git diff --name-only)
+```
+
+# Setup example
 
 ## Step 1
 Create configuration file  `.go-header.yaml` in the root of project.
@@ -56,4 +66,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 ## Step 3 
-You are ready! Execute `go-header` from the root of the project. 
+You are ready! Execute `go-header {FILES}` from the root of the project. 

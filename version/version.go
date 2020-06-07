@@ -1,5 +1,5 @@
 package version
 
-func Get() string {
-	return "v0.3.0"
+func Value() string {
+	return "v0.3.1"
 }
