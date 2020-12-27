@@ -30,4 +30,4 @@ jobs:
       run: go install ./...
     
     - name: Self-check
-      run: go-header $(git ls-files | grep -E '.*\.go')
+      run: go-header $(git ls-files | grep -E '.*\.go$')
