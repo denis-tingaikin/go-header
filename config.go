@@ -38,8 +38,12 @@ type Configuration struct {
 
 func (c *Configuration) builtInValues() map[string]Value {
 	var result = make(map[string]Value)
+	year := fmt.Sprint(time.Now().Year())
 	result["year-range"] = &RegexpValue{
-		RawValue: strings.ReplaceAll(`(200\d\-YEAR)|(YEAR)`, "YEAR", fmt.Sprint(time.Now().Year())),
+		RawValue: strings.ReplaceAll(`(20\d\d\-YEAR)|(YEAR)`, "YEAR", year),
+	}
+	result["year"] = &ConstValue{
+		RawValue: year,
 	}
 	return result
 }

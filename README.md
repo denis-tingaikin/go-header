@@ -31,7 +31,8 @@ Values ​​with type `regexp` checks on the match.
 
 ## Bult-in values
 
-- **YEAR-RANGE** - Can be any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example template using: `{{year-range}}` or `{{YEAR-RANGE}}`
+- **YEAR** - Expects current year. Example header value: `2020`.  Example of template using: `{{YEAR}}` or `{{year}}`.
+- **YEAR-RANGE** - Expects any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example of template using: `{{year-range}}` or `{{YEAR-RANGE}}`.
 
 ## Execution
 
@@ -55,6 +56,7 @@ template-path: ./mypath/mytemplate.txt
 
 ### Step 2 
 Write the template file. For example for config above `mytemplate.txt` could be
+
 ```text
 {{ MY COMPANY }}
 SPDX-License-Identifier: Apache-2.0
