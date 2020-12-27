@@ -17,8 +17,8 @@ jobs:
 
     - name: Set go envs
       run: |
-        echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> GITHUB_ENV
-        echo "$(dirname $GITHUB_WORKSPACE)/BIN" >> GITHUB_PATH
+        echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> $GITHUB_ENV
+        echo "$(dirname $GITHUB_WORKSPACE)/bin" >> $GITHUB_PATH
 
     - name: Build
       run: go build

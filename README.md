@@ -3,15 +3,19 @@
 
 Go source code linter providing checks for license headers.
 
-# Installation
+## Installation
 
 For installation you can simply use `go get`.
 
-```
+```bash
 go get github.com/denis-tingajkin/go-header/cmd/go-header
 ```
 
-# Configuration
+## Bult-in values
+
+- **YEAR-RANGE** - Can be any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example template using: `{{year-range}}` or `{{YEAR-RANGE}}`
+
+## Configuration
 
 To configuring `go-header.yml` linter you simply need to fill the next structures in YAML format.
 ```go
@@ -29,16 +33,17 @@ Where supported two kinds of values: `const` and `regexp`. NOTE: values can be u
 Values ​​with type `const` checks on equality.
 Values ​​with type `regexp` checks on the match.
 
-# Execution
+## Execution
 
-`go-header` linter expects file path on input. If you want to run `go-header` only on diff files, then you can use this command
+`go-header` linter expects file path on input. If you want to run `go-header` only on diff files, then you can use this command.
+
 ```bash
-go-header $(git diff --name-only)
+go-header $(git diff --name-only | grep -E '.*\.go')
 ```
 
-# Setup example
+## Setup example
 
-## Step 1
+### Step 1
 Create configuration file  `.go-header.yaml` in the root of project.
 ```yaml
 ---
@@ -47,7 +52,8 @@ values:
     MY COMPANY: mycompany.com
 template-path: ./mypath/mytemplate.txt
 ```
-## Step 2 
+
+### Step 2 
 Write the template file. For example for config above `mytemplate.txt` could be
 ```text
 {{ MY COMPANY }}
@@ -65,5 +71,5 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
-## Step 3 
+### Step 3 
 You are ready! Execute `go-header {FILES}` from the root of the project. 
