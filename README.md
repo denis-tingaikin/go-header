@@ -11,10 +11,6 @@ For installation you can simply use `go get`.
 go get github.com/denis-tingajkin/go-header/cmd/go-header
 ```
 
-## Bult-in values
-
-- **YEAR-RANGE** - Can be any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example template using: `{{year-range}}` or `{{YEAR-RANGE}}`
-
 ## Configuration
 
 To configuring `go-header.yml` linter you simply need to fill the next structures in YAML format.
@@ -32,6 +28,10 @@ type Configuration struct {
 Where supported two kinds of values: `const` and `regexp`. NOTE: values can be used recursively. 
 Values ​​with type `const` checks on equality.
 Values ​​with type `regexp` checks on the match.
+
+## Bult-in values
+
+- **YEAR-RANGE** - Can be any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example template using: `{{year-range}}` or `{{YEAR-RANGE}}`
 
 ## Execution
 
