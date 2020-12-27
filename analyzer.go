@@ -1,24 +1,65 @@
+// Copyright (c) 2020 Denis Tingajkin
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package goheader
 
 import (
 	"fmt"
 	"go/ast"
+	"os"
+	"os/exec"
 	"strings"
+	"time"
 )
 
-type Analyzer interface {
-	Analyze(file *ast.File) Issue
+type Target struct {
+	Path string
+	File *ast.File
 }
 
-type analyzer struct {
+func (t *Target) ModTime() (time.Time, error) {
+	diff, err := exec.Command("git", "diff", t.Path).CombinedOutput()
+	if err == nil && len(diff) == 0 {
+		line, err := exec.Command("git", "log", "--pretty=format:%cd", "-n", "1", "--date=rfc", "--", t.Path).CombinedOutput()
+		if err == nil {
+			return time.Parse(time.RFC1123Z, string(line))
+		}
+	}
+	info, err := os.Stat(t.Path)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return info.ModTime(), nil
+}
+
+type Analyzer struct {
 	values   map[string]Value
 	template string
 }
 
-func (a *analyzer) Analyze(file *ast.File) Issue {
+func (a *Analyzer) Analyze(target *Target) Issue {
 	if a.template == "" {
 		return NewIssue("Missed template for check")
 	}
+	if t, err := target.ModTime(); err == nil {
+		if t.Year() != time.Now().Year() {
+			return nil
+		}
+	}
+	file := target.File
 	var header string
 	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
 		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
@@ -69,7 +110,7 @@ func (a *analyzer) Analyze(file *ast.File) Issue {
 	return nil
 }
 
-func (a *analyzer) readField(reader Reader) string {
+func (a *Analyzer) readField(reader *Reader) string {
 	_ = reader.Next()
 	_ = reader.Next()
 
@@ -83,8 +124,8 @@ func (a *analyzer) readField(reader Reader) string {
 	return strings.ToLower(strings.TrimSpace(r))
 }
 
-func New(options ...AnalyzerOption) Analyzer {
-	a := &analyzer{}
+func New(options ...Option) *Analyzer {
+	a := &Analyzer{}
 	for _, o := range options {
 		o.apply(a)
 	}

@@ -7,21 +7,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Set up Go 1.13
+    - name: Set up Go 1.15
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13
-      id: go
+        go-version: 1.15
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
+
+    - name: Set go envs
+      run: |
+        echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> GITHUB_ENV
+        echo "$(dirname $GITHUB_WORKSPACE)/BIN" >> GITHUB_PATH
 
     - name: Build
-      env:
-        GO111MODULE: on
       run: go build
 
     - name: Test
-      env:
-        GO111MODULE: on
       run: go test ./...
+
+    - name: Install
+      run: go install ./...
+    
+    - name: Self-check
+      run: go-header $(git ls-files | grep -E '.*\.go')

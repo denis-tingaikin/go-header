@@ -1,14 +1,31 @@
+// Copyright (c) 2020 Denis Tingajkin
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"fmt"
+	"go/parser"
+	"go/token"
+	"os"
+
 	goheader "github.com/denis-tingajkin/go-header"
 	"github.com/denis-tingajkin/go-header/version"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
-	"go/parser"
-	"go/token"
-	"os"
 )
 
 const configPath = ".go-header.yml"
@@ -49,7 +66,10 @@ func main() {
 		if err != nil {
 			logrus.Fatalf("File %v can not be parsed due compilation errors %v", p, err.Error())
 		}
-		i := a.Analyze(f)
+		i := a.Analyze(&goheader.Target{
+			Path: p,
+			File: f,
+		})
 		if i != nil {
 			issues = append(issues, &issue{
 				Issue:    i,
