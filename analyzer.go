@@ -30,12 +30,14 @@ type Target struct {
 	File *ast.File
 }
 
+const iso = "2006-01-02 15:04:05 -0700"
+
 func (t *Target) ModTime() (time.Time, error) {
 	diff, err := exec.Command("git", "diff", t.Path).CombinedOutput()
 	if err == nil && len(diff) == 0 {
-		line, err := exec.Command("git", "log", "--pretty=format:%cd", "-n", "1", "--date=rfc", "--", t.Path).CombinedOutput()
+		line, err := exec.Command("git", "log", "-1", "--pretty=format:%cd", "--date=iso", "--", t.Path).CombinedOutput()
 		if err == nil {
-			return time.Parse(time.RFC1123Z, string(line))
+			return time.Parse(iso, string(line))
 		}
 	}
 	info, err := os.Stat(t.Path)
