@@ -26,3 +26,10 @@ type Location struct {
 func (l Location) String() string {
 	return fmt.Sprintf("%v:%v", l.Line+1, l.Position)
 }
+
+func (l Location) Add(other Location) Location {
+	return Location{
+		Line:     l.Line + other.Line,
+		Position: l.Position + other.Position,
+	}
+}

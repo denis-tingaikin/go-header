@@ -63,11 +63,15 @@ func (a *Analyzer) Analyze(target *Target) Issue {
 	}
 	file := target.File
 	var header string
+	var offset = Location{
+		Position: 1,
+	}
 	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
 		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
 			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
 		} else {
 			header = file.Comments[0].Text()
+			offset.Position += 3
 		}
 	}
 	header = strings.TrimSpace(header)
@@ -75,6 +79,7 @@ func (a *Analyzer) Analyze(target *Target) Issue {
 		return NewIssue("Missed header for check")
 	}
 	s := NewReader(header)
+	s.SetOffset(offset)
 	t := NewReader(a.template)
 	for !s.Done() && !t.Done() {
 		templateCh := t.Peek()

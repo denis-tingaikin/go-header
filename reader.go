@@ -25,6 +25,11 @@ type Reader struct {
 	source   string
 	position int
 	location Location
+	offset   Location
+}
+
+func (r *Reader) SetOffset(offset Location) {
+	r.offset = offset
 }
 
 func (r *Reader) Position() int {
@@ -32,7 +37,7 @@ func (r *Reader) Position() int {
 }
 
 func (r *Reader) Location() Location {
-	return r.location
+	return r.location.Add(r.offset)
 }
 
 func (r *Reader) Peek() rune {
