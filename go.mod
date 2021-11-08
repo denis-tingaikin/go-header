@@ -1,4 +1,4 @@
-module github.com/denis-tingajkin/go-header
+module github.com/denis-tingaikin/go-header
 
 go 1.15
 
