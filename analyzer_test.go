@@ -25,7 +25,7 @@ import (
 	"path"
 	"testing"
 
-	goheader "github.com/denis-tingajkin/go-header"
+	goheader "github.com/denis-tingaikin/go-header"
 	"github.com/stretchr/testify/require"
 )
 

@@ -22,8 +22,8 @@ import (
 	"go/token"
 	"os"
 
-	goheader "github.com/denis-tingajkin/go-header"
-	"github.com/denis-tingajkin/go-header/version"
+	goheader "github.com/denis-tingaikin/go-header"
+	"github.com/denis-tingaikin/go-header/version"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 )
