@@ -1,5 +1,5 @@
 # go-header
-[![Actions Status](https://github.com/denis-tingajkin/go-header/workflows/ci/badge.svg)](https://github.com/denis-tingajkin/go-header/actions)
+[![Actions Status](https://github.com/denis-tingaikin/go-header/workflows/ci/badge.svg)](https://github.com/denis-tingaikin/go-header/actions)
 
 Go source code linter providing checks for license headers.
 
@@ -8,7 +8,7 @@ Go source code linter providing checks for license headers.
 For installation you can simply use `go get`.
 
 ```bash
-go get github.com/denis-tingajkin/go-header/cmd/go-header
+go get github.com/denis-tingaikin/go-header/cmd/go-header
 ```
 
 ## Configuration
