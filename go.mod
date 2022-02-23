@@ -1,6 +1,6 @@
 module github.com/denis-tingaikin/go-header
 
-go 1.15
+go 1.17
 
 require (
 	github.com/denis-tingajkin/go-header v0.4.2
