@@ -1,5 +1,5 @@
 # go-header
-[![Actions Status](https://github.com/denis-tingaikin/go-header/workflows/ci/badge.svg)](https://github.com/denis-tingaikin/go-header/actions)
+[![ci](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml)
 
 Go source code linter providing checks for license headers.
 
