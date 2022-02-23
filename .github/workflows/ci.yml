@@ -3,7 +3,7 @@ on: [push, pull_request]
 jobs:
 
   build:
-    name: Build
+    name: ci
     runs-on: ubuntu-latest
     steps:
 
@@ -24,9 +24,9 @@ jobs:
 
     - name: Build
       run: go build
-
+ 
     - name: Test
-      run: go test ./...
+      run: go test ./... -race -v
 
     - name: Install
       run: go install ./...
