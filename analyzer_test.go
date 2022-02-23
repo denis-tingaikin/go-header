@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Denis Tingajkin
+// Copyright (c) 2020-2022 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -45,6 +45,16 @@ func header(header string) *goheader.Target {
 		},
 		Path: os.TempDir(),
 	}
+}
+func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
+	var conf goheader.Configuration
+	var vals, err = conf.GetValues()
+	require.NoError(t, err)
+	vals["my-val"] = &goheader.RegexpValue{
+		RawValue: "{{year-range }} B",
+	}
+	var a = goheader.New(goheader.WithTemplate("A {{ my-val }}"), goheader.WithValues(vals))
+	require.Nil(t, a.Analyze(header(`A 2000-2022 B`)))
 }
 
 func TestAnalyzer_Analyze1(t *testing.T) {
