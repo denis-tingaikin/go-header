@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Denis Tingajkin
+// Copyright (c) 2020-2022 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,5 +17,5 @@
 package version
 
 func Value() string {
-	return "v0.4"
+	return "v0.4.3"
 }
