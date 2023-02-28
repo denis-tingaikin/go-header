@@ -3,8 +3,8 @@ module github.com/denis-tingaikin/go-header
 go 1.17
 
 require (
-	github.com/stretchr/testify v1.7.0
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+	github.com/stretchr/testify v1.8.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
