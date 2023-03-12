@@ -137,6 +137,13 @@ func New(options ...Option) *Analyzer {
 		o.apply(a)
 	}
 	for _, v := range a.values {
+		if v.GetValue() == "" {
+			panic("Value's value missed")
+		}
+		if v.GetKey() == "" {
+			panic("Value's key missed")
+		}
+
 		err := v.Calculate(a.values)
 		if err != nil {
 			panic(err.Error())

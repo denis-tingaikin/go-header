@@ -54,6 +54,7 @@ func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 	var vals, err = conf.GetValues()
 	require.NoError(t, err)
 	vals["my-val"] = &goheader.RegexpValue{
+		Key:      "my-val",
 		RawValue: "{{ year-range }} B",
 	}
 	var a = goheader.New(goheader.WithTemplate("A {{ my-val }}"), goheader.WithValues(vals))
@@ -65,6 +66,7 @@ func TestAnalyzer_YearRangeValue_CurrentYearOnly(t *testing.T) {
 	var vals, err = conf.GetValues()
 	require.NoError(t, err)
 	vals["current-year"] = &goheader.RegexpValue{
+		Key:      "current-year",
 		RawValue: "{{ year-range }} C",
 	}
 	var a = goheader.New(goheader.WithTemplate("A {{ current-year }}"), goheader.WithValues(vals))
@@ -76,6 +78,7 @@ func TestAnalyzer_Analyze1(t *testing.T) {
 		goheader.WithTemplate("A {{ YEAR }}\nB"),
 		goheader.WithValues(map[string]goheader.Value{
 			"YEAR": &goheader.ConstValue{
+				Key:      "YEAR",
 				RawValue: "2020",
 			},
 		}))
@@ -89,9 +92,11 @@ func TestAnalyzer_Analyze2(t *testing.T) {
 		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
 		goheader.WithValues(map[string]goheader.Value{
 			"COPYRIGHT HOLDER": &goheader.RegexpValue{
+				Key:      "COPYRIGHT HOLDER",
 				RawValue: "(A {{ YEAR }}\n(.*)\n)+",
 			},
 			"YEAR": &goheader.ConstValue{
+				Key:      "YEAR",
 				RawValue: "2020",
 			},
 		}))
@@ -109,9 +114,11 @@ func TestAnalyzer_Analyze3(t *testing.T) {
 		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
 		goheader.WithValues(map[string]goheader.Value{
 			"COPYRIGHT HOLDER": &goheader.RegexpValue{
+				Key:      "COPYRIGHT HOLDER",
 				RawValue: "(A {{ YEAR }}\n(.*)\n)+",
 			},
 			"YEAR": &goheader.ConstValue{
+				Key:      "YEAR",
 				RawValue: "2020",
 			},
 		}))
@@ -129,18 +136,23 @@ func TestAnalyzer_Analyze4(t *testing.T) {
 		goheader.WithTemplate("{{ A }}"),
 		goheader.WithValues(map[string]goheader.Value{
 			"A": &goheader.RegexpValue{
+				Key:      "A",
 				RawValue: "[{{ B }}{{ C }}]{{D}}",
 			},
 			"B": &goheader.ConstValue{
+				Key:      "B",
 				RawValue: "a-",
 			},
 			"C": &goheader.RegexpValue{
+				Key:      "C",
 				RawValue: "z",
 			},
 			"D": &goheader.ConstValue{
+				Key:      "D",
 				RawValue: "{{E}}",
 			},
 			"E": &goheader.ConstValue{
+				Key:      "E",
 				RawValue: "{7}",
 			},
 		}))
@@ -162,6 +174,20 @@ func TestAnalyzer_Analyze5(t *testing.T) {
 	require.Nil(t, a.Analyze(&goheader.Target{File: f, Path: p}))
 }
 
+func TestAnalyzer_Analyze6(t *testing.T) {
+	require.PanicsWithValue(t, goheader.ErrRecursiveValue.Error()+": SOME-VALUE", func() {
+		goheader.New(
+			goheader.WithTemplate("A {{ some-value }} B"),
+			goheader.WithValues(map[string]goheader.Value{
+				"SOME-VALUE": &goheader.ConstValue{
+					Key:      "SOME-VALUE",
+					RawValue: "{{ some-value }}",
+				},
+			}),
+		)
+	})
+}
+
 func TestREADME(t *testing.T) {
 	a := goheader.New(
 		goheader.WithTemplate(`{{ MY COMPANY }}
@@ -180,6 +206,7 @@ See the License for the specific language governing permissions and
 limitations under the License.`),
 		goheader.WithValues(map[string]goheader.Value{
 			"MY COMPANY": &goheader.ConstValue{
+				Key:      "MY COMPANY",
 				RawValue: "mycompany.com",
 			},
 		}))
