@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2023 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,6 +17,7 @@
 package goheader_test
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -24,6 +25,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	goheader "github.com/denis-tingaikin/go-header"
 	"github.com/stretchr/testify/require"
@@ -46,15 +48,27 @@ func header(header string) *goheader.Target {
 		Path: os.TempDir(),
 	}
 }
+
 func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 	var conf goheader.Configuration
 	var vals, err = conf.GetValues()
 	require.NoError(t, err)
 	vals["my-val"] = &goheader.RegexpValue{
-		RawValue: "{{year-range }} B",
+		RawValue: "{{ year-range }} B",
 	}
 	var a = goheader.New(goheader.WithTemplate("A {{ my-val }}"), goheader.WithValues(vals))
-	require.Nil(t, a.Analyze(header(`A 2000-2022 B`)))
+	require.Nil(t, a.Analyze(header(fmt.Sprintf(`A 2000-%d B`, time.Now().Year()))))
+}
+
+func TestAnalyzer_YearRangeValue_CurrentYearOnly(t *testing.T) {
+	var conf goheader.Configuration
+	var vals, err = conf.GetValues()
+	require.NoError(t, err)
+	vals["current-year"] = &goheader.RegexpValue{
+		RawValue: "{{ year-range }} C",
+	}
+	var a = goheader.New(goheader.WithTemplate("A {{ current-year }}"), goheader.WithValues(vals))
+	require.Nil(t, a.Analyze(header(fmt.Sprintf(`A %d C`, time.Now().Year()))))
 }
 
 func TestAnalyzer_Analyze1(t *testing.T) {
