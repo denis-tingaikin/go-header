@@ -17,6 +17,7 @@
 package goheader
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"os"
@@ -131,23 +132,23 @@ func (a *Analyzer) readField(reader *Reader) string {
 	return strings.ToLower(strings.TrimSpace(r))
 }
 
-func New(options ...Option) *Analyzer {
+func New(options ...Option) (*Analyzer, error) {
 	a := &Analyzer{}
 	for _, o := range options {
 		o.apply(a)
 	}
 	for _, v := range a.values {
 		if v.GetValue() == "" {
-			panic("Value's value missed")
+			return nil, errors.New("goheader.Value's value missed")
 		}
 		if v.GetKey() == "" {
-			panic("Value's key missed")
+			return nil, errors.New("goheader.Value's key missed")
 		}
 
 		err := v.Calculate(a.values)
 		if err != nil {
-			panic(err.Error())
+			return nil, fmt.Errorf("calculate goheader.Value: %w", err)
 		}
 	}
-	return a
+	return a, nil
 }

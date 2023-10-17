@@ -57,7 +57,8 @@ func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 		Key:      "my-val",
 		RawValue: "{{ year-range }} B",
 	}
-	var a = goheader.New(goheader.WithTemplate("A {{ my-val }}"), goheader.WithValues(vals))
+	a, err := goheader.New(goheader.WithTemplate("A {{ my-val }}"), goheader.WithValues(vals))
+	require.NoError(t, err)
 	require.Nil(t, a.Analyze(header(fmt.Sprintf(`A 2000-%d B`, time.Now().Year()))))
 }
 
@@ -69,12 +70,13 @@ func TestAnalyzer_YearRangeValue_CurrentYearOnly(t *testing.T) {
 		Key:      "current-year",
 		RawValue: "{{ year-range }} C",
 	}
-	var a = goheader.New(goheader.WithTemplate("A {{ current-year }}"), goheader.WithValues(vals))
+	a, err := goheader.New(goheader.WithTemplate("A {{ current-year }}"), goheader.WithValues(vals))
+	require.NoError(t, err)
 	require.Nil(t, a.Analyze(header(fmt.Sprintf(`A %d C`, time.Now().Year()))))
 }
 
 func TestAnalyzer_Analyze1(t *testing.T) {
-	a := goheader.New(
+	a, err := goheader.New(
 		goheader.WithTemplate("A {{ YEAR }}\nB"),
 		goheader.WithValues(map[string]goheader.Value{
 			"YEAR": &goheader.ConstValue{
@@ -84,11 +86,12 @@ func TestAnalyzer_Analyze1(t *testing.T) {
 		}))
 	issue := a.Analyze(header(`A 2020
 B`))
+	require.NoError(t, err)
 	require.Nil(t, issue)
 }
 
 func TestAnalyzer_Analyze2(t *testing.T) {
-	a := goheader.New(
+	a, err := goheader.New(
 		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
 		goheader.WithValues(map[string]goheader.Value{
 			"COPYRIGHT HOLDER": &goheader.RegexpValue{
@@ -106,11 +109,12 @@ A 2020
 B
 TEXT
 `))
+	require.NoError(t, err)
 	require.Nil(t, issue)
 }
 
 func TestAnalyzer_Analyze3(t *testing.T) {
-	a := goheader.New(
+	a, err := goheader.New(
 		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
 		goheader.WithValues(map[string]goheader.Value{
 			"COPYRIGHT HOLDER": &goheader.RegexpValue{
@@ -128,11 +132,12 @@ A 2021
 B
 TEXT
 `))
+	require.NoError(t, err)
 	require.NotNil(t, issue)
 }
 
 func TestAnalyzer_Analyze4(t *testing.T) {
-	a := goheader.New(
+	a, err := goheader.New(
 		goheader.WithTemplate("{{ A }}"),
 		goheader.WithValues(map[string]goheader.Value{
 			"A": &goheader.RegexpValue{
@@ -157,16 +162,18 @@ func TestAnalyzer_Analyze4(t *testing.T) {
 			},
 		}))
 	issue := a.Analyze(header(`abcdefg`))
+	require.NoError(t, err)
 	require.Nil(t, issue)
 }
 
 func TestAnalyzer_Analyze5(t *testing.T) {
-	a := goheader.New(goheader.WithTemplate("abc"))
+	a, err := goheader.New(goheader.WithTemplate("abc"))
+	require.NoError(t, err)
 	p := path.Join(os.TempDir(), t.Name()+".go")
 	defer func() {
 		_ = os.Remove(p)
 	}()
-	err := ioutil.WriteFile(p, []byte("/*abc*///comment\npackage abc"), os.ModePerm)
+	err = ioutil.WriteFile(p, []byte("/*abc*///comment\npackage abc"), os.ModePerm)
 	require.Nil(t, err)
 	s := token.NewFileSet()
 	f, err := parser.ParseFile(s, p, nil, parser.ParseComments)
@@ -175,21 +182,22 @@ func TestAnalyzer_Analyze5(t *testing.T) {
 }
 
 func TestAnalyzer_Analyze6(t *testing.T) {
-	require.PanicsWithValue(t, goheader.ErrRecursiveValue.Error()+": SOME-VALUE", func() {
-		goheader.New(
-			goheader.WithTemplate("A {{ some-value }} B"),
-			goheader.WithValues(map[string]goheader.Value{
-				"SOME-VALUE": &goheader.ConstValue{
-					Key:      "SOME-VALUE",
-					RawValue: "{{ some-value }}",
-				},
-			}),
-		)
-	})
+	a, err := goheader.New(
+		goheader.WithTemplate("A {{ some-value }} B"),
+		goheader.WithValues(map[string]goheader.Value{
+			"SOME-VALUE": &goheader.ConstValue{
+				Key:      "SOME-VALUE",
+				RawValue: "{{ some-value }}",
+			},
+		}),
+	)
+	require.ErrorIs(t, err, goheader.ErrRecursiveValue)
+	require.Contains(t, err.Error(), "SOME-VALUE")
+	require.Nil(t, a)
 }
 
 func TestREADME(t *testing.T) {
-	a := goheader.New(
+	a, err := goheader.New(
 		goheader.WithTemplate(`{{ MY COMPANY }}
 SPDX-License-Identifier: Apache-2.0
 
@@ -210,6 +218,7 @@ limitations under the License.`),
 				RawValue: "mycompany.com",
 			},
 		}))
+	require.NoError(t, err)
 	issue := a.Analyze(header(`mycompany.com
 SPDX-License-Identifier: Apache-2.0
 

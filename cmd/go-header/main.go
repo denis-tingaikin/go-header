@@ -58,7 +58,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Can not get template: %v", err.Error())
 	}
-	a := goheader.New(goheader.WithValues(v), goheader.WithTemplate(t))
+	a, err := goheader.New(goheader.WithValues(v), goheader.WithTemplate(t))
 	s := token.NewFileSet()
 	var issues []*issue
 	for _, p := range paths {
