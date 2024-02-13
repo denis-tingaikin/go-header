@@ -187,8 +187,7 @@ limitations under the License.`))
 }
 
 func TestFix(t *testing.T) {
-	const src = `// mycompany.net
-// SPDX-License-Identifier: Foo
+	const pkg = `
 
 // Package foo
 package foo
@@ -196,31 +195,114 @@ package foo
 func Foo() { println("Foo") }
 `
 
-	a := goheader.New(
-		goheader.WithTemplate(`{{ MY COMPANY }}
+	analyze := func(header string) goheader.Issue {
+		a := goheader.New(
+			goheader.WithTemplate(`{{ MY COMPANY }}
 SPDX-License-Identifier: Foo`),
-		goheader.WithValues(map[string]goheader.Value{
-			"MY COMPANY": &goheader.ConstValue{
-				RawValue: "mycompany.com",
-			},
-		}))
+			goheader.WithValues(map[string]goheader.Value{
+				"MY COMPANY": &goheader.ConstValue{
+					RawValue: "mycompany.com",
+				},
+			}))
 
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "foo.go", src, parser.ParseComments)
-	require.NoError(t, err)
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "foo.go", header+pkg, parser.ParseComments)
+		require.NoError(t, err)
 
-	issue := a.Analyze(&goheader.Target{
-		File: file,
-		Path: t.TempDir(),
+		issue := a.Analyze(&goheader.Target{
+			File: file,
+			Path: t.TempDir(),
+		})
+		require.NotNil(t, issue)
+		require.NotNil(t, issue.Fix())
+		return issue
+	}
+
+	t.Run("Line comment", func(t *testing.T) {
+		issue := analyze(`// mycompany.net
+// SPDX-License-Identifier: Foo`)
+
+		require.Equal(t, []string{
+			"// mycompany.net",
+			"// SPDX-License-Identifier: Foo",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"// mycompany.com",
+			"// SPDX-License-Identifier: Foo",
+		}, issue.Fix().Expected)
 	})
-	require.NotNil(t, issue)
-	require.NotNil(t, issue.Fix())
-	require.Equal(t, []string{
-		"// mycompany.net",
-		"// SPDX-License-Identifier: Foo",
-	}, issue.Fix().Actual)
-	require.Equal(t, []string{
-		"// mycompany.com",
-		"// SPDX-License-Identifier: Foo",
-	}, issue.Fix().Expected)
+
+	t.Run("Block comment 1", func(t *testing.T) {
+		issue := analyze(`/* mycompany.net
+SPDX-License-Identifier: Foo */`)
+
+		require.Equal(t, []string{
+			"/* mycompany.net",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/* mycompany.com",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 2", func(t *testing.T) {
+		issue := analyze(`/*
+mycompany.net
+SPDX-License-Identifier: Foo */`)
+
+		require.Equal(t, []string{
+			"/*",
+			"mycompany.net",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/*",
+			"mycompany.com",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 3", func(t *testing.T) {
+		issue := analyze(`/* mycompany.net
+SPDX-License-Identifier: Foo
+*/`)
+
+		require.Equal(t, []string{
+			"/* mycompany.net",
+			"SPDX-License-Identifier: Foo",
+			"*/",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/* mycompany.com",
+			"SPDX-License-Identifier: Foo",
+			"*/",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 4", func(t *testing.T) {
+		issue := analyze(`/*
+
+mycompany.net
+SPDX-License-Identifier: Foo
+
+*/`)
+
+		require.Equal(t, []string{
+			"/*",
+			"",
+			"mycompany.net",
+			"SPDX-License-Identifier: Foo",
+			"",
+			"*/",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/*",
+			"",
+			"mycompany.com",
+			"SPDX-License-Identifier: Foo",
+			"",
+			"*/",
+		}, issue.Fix().Expected)
+	})
 }
