@@ -75,7 +75,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		}
 	}
 	defer func() {
-		if i.Message() == "" {
+		if i == nil {
 			return
 		}
 		fix, ok := a.generateFix(i, file, header)
