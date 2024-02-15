@@ -17,6 +17,7 @@
 package goheader_test
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -24,6 +25,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	goheader "github.com/denis-tingaikin/go-header"
 	"github.com/stretchr/testify/require"
@@ -54,7 +56,7 @@ func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 		RawValue: "{{year-range }} B",
 	}
 	var a = goheader.New(goheader.WithTemplate("A {{ my-val }}"), goheader.WithValues(vals))
-	require.Nil(t, a.Analyze(header(`A 2000-2022 B`)))
+	require.Nil(t, a.Analyze(header(fmt.Sprintf("A 2000-%v B", time.Now().Year()))))
 }
 
 func TestAnalyzer_Analyze1(t *testing.T) {
