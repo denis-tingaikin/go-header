@@ -8,7 +8,7 @@ Go source code linter providing checks for license headers.
 For installation you can simply use `go get`.
 
 ```bash
-go get github.com/denis-tingaikin/go-header/cmd/go-header
+go install github.com/denis-tingaikin/go-header/cmd/go-header
 ```
 
 ## Configuration
