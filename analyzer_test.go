@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2023 Denis Tingaikin
+// Copyright (c) 2020-2024 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -234,4 +234,125 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.`))
 	require.Nil(t, issue)
+}
+
+func TestFix(t *testing.T) {
+	const pkg = `
+
+// Package foo
+package foo
+
+func Foo() { println("Foo") }
+`
+
+	analyze := func(header string) goheader.Issue {
+		a := goheader.New(
+			goheader.WithTemplate(`{{ MY COMPANY }}
+SPDX-License-Identifier: Foo`),
+			goheader.WithValues(map[string]goheader.Value{
+				"MY COMPANY": &goheader.ConstValue{
+					RawValue: "mycompany.com",
+				},
+			}))
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "foo.go", header+pkg, parser.ParseComments)
+		require.NoError(t, err)
+
+		issue := a.Analyze(&goheader.Target{
+			File: file,
+			Path: t.TempDir(),
+		})
+		require.NotNil(t, issue)
+		require.NotNil(t, issue.Fix())
+		return issue
+	}
+
+	t.Run("Line comment", func(t *testing.T) {
+		issue := analyze(`// mycompany.net
+// SPDX-License-Identifier: Foo`)
+
+		require.Equal(t, []string{
+			"// mycompany.net",
+			"// SPDX-License-Identifier: Foo",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"// mycompany.com",
+			"// SPDX-License-Identifier: Foo",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 1", func(t *testing.T) {
+		issue := analyze(`/* mycompany.net
+SPDX-License-Identifier: Foo */`)
+
+		require.Equal(t, []string{
+			"/* mycompany.net",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/* mycompany.com",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 2", func(t *testing.T) {
+		issue := analyze(`/*
+mycompany.net
+SPDX-License-Identifier: Foo */`)
+
+		require.Equal(t, []string{
+			"/*",
+			"mycompany.net",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/*",
+			"mycompany.com",
+			"SPDX-License-Identifier: Foo */",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 3", func(t *testing.T) {
+		issue := analyze(`/* mycompany.net
+SPDX-License-Identifier: Foo
+*/`)
+
+		require.Equal(t, []string{
+			"/* mycompany.net",
+			"SPDX-License-Identifier: Foo",
+			"*/",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/* mycompany.com",
+			"SPDX-License-Identifier: Foo",
+			"*/",
+		}, issue.Fix().Expected)
+	})
+
+	t.Run("Block comment 4", func(t *testing.T) {
+		issue := analyze(`/*
+
+mycompany.net
+SPDX-License-Identifier: Foo
+
+*/`)
+
+		require.Equal(t, []string{
+			"/*",
+			"",
+			"mycompany.net",
+			"SPDX-License-Identifier: Foo",
+			"",
+			"*/",
+		}, issue.Fix().Actual)
+		require.Equal(t, []string{
+			"/*",
+			"",
+			"mycompany.com",
+			"SPDX-License-Identifier: Foo",
+			"",
+			"*/",
+		}, issue.Fix().Expected)
+	})
 }
