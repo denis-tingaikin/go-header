@@ -176,7 +176,7 @@ func (a *Analyzer) generateFix(i Issue, file *ast.File, header string) (Fix, boo
 			if f.Calculate(a.values) != nil {
 				return Fix{}, false
 			}
-			expect += f.Get()
+			expect += f.GetValue()
 			continue
 		}
 
