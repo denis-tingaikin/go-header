@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2023 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -28,11 +28,11 @@ import (
 
 // Configuration represents go-header linter setup parameters
 type Configuration struct {
-	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
-	Values map[string]map[string]string `yaml:"values"'`
+	// Values is map of values. Supports two types `const` and `regexp`. Values can be used recursively.
+	Values map[string]map[string]string `yaml:"values"`
 	// Template is template for checking. Uses values.
 	Template string `yaml:"template"`
-	// TemplatePath path to the template file. Useful if need to load the template from a specific file.
+	// TemplatePath path to the template file. Useful if needed to load the template from a specific file.
 	TemplatePath string `yaml:"template-path"`
 }
 
@@ -40,9 +40,11 @@ func (c *Configuration) builtInValues() map[string]Value {
 	var result = make(map[string]Value)
 	year := fmt.Sprint(time.Now().Year())
 	result["year-range"] = &RegexpValue{
+		Key:      "year-range",
 		RawValue: strings.ReplaceAll(`((20\d\d\-YEAR)|(YEAR))`, "YEAR", year),
 	}
 	result["year"] = &ConstValue{
+		Key:      "year",
 		RawValue: year,
 	}
 	return result
@@ -50,16 +52,16 @@ func (c *Configuration) builtInValues() map[string]Value {
 
 func (c *Configuration) GetValues() (map[string]Value, error) {
 	var result = c.builtInValues()
-	createConst := func(raw string) Value {
-		return &ConstValue{RawValue: raw}
+	createConst := func(k, raw string) Value {
+		return &ConstValue{Key: k, RawValue: raw}
 	}
-	createRegexp := func(raw string) Value {
-		return &RegexpValue{RawValue: raw}
+	createRegexp := func(k, raw string) Value {
+		return &RegexpValue{Key: k, RawValue: raw}
 	}
-	appendValues := func(m map[string]string, create func(string) Value) {
+	appendValues := func(m map[string]string, create func(string, string) Value) {
 		for k, v := range m {
 			key := strings.ToLower(k)
-			result[key] = create(v)
+			result[key] = create(key, v)
 		}
 	}
 	for k, v := range c.Values {

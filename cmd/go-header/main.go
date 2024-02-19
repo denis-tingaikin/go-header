@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2023 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -58,7 +58,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Can not get template: %v", err.Error())
 	}
-	a := goheader.New(goheader.WithValues(v), goheader.WithTemplate(t))
+	a, err := goheader.New(goheader.WithValues(v), goheader.WithTemplate(t))
 	s := token.NewFileSet()
 	var issues []*issue
 	for _, p := range paths {

@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2023 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -23,9 +23,12 @@ import (
 	"strings"
 )
 
+var ErrRecursiveValue = errors.New("recursive value")
+
 type Calculable interface {
 	Calculate(map[string]Value) error
-	Get() string
+	GetKey() string
+	GetValue() string
 }
 
 type Value interface {
@@ -35,7 +38,7 @@ type Value interface {
 
 func calculateValue(calculable Calculable, values map[string]Value) (string, error) {
 	sb := strings.Builder{}
-	r := calculable.Get()
+	r := calculable.GetValue()
 	var endIndex int
 	var startIndex int
 	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
@@ -44,12 +47,15 @@ func calculateValue(calculable Calculable, values map[string]Value) (string, err
 		if endIndex < 0 {
 			return "", errors.New("missed value ending")
 		}
-		subVal := strings.ToLower(strings.TrimSpace(r[startIndex+2 : endIndex]))
+		subVal := normalize(r[startIndex+2 : endIndex])
 		if val := values[subVal]; val != nil {
+			if k := calculable.GetKey(); normalize(k) == subVal {
+				return "", fmt.Errorf("%w: %v", ErrRecursiveValue, k)
+			}
 			if err := val.Calculate(values); err != nil {
 				return "", err
 			}
-			sb.WriteString(val.Get())
+			sb.WriteString(val.GetValue())
 		} else {
 			return "", fmt.Errorf("unknown value name %v", subVal)
 		}
@@ -60,7 +66,12 @@ func calculateValue(calculable Calculable, values map[string]Value) (string, err
 	return sb.String(), nil
 }
 
+func normalize(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
 type ConstValue struct {
+	Key      string
 	RawValue string
 }
 
@@ -73,20 +84,24 @@ func (c *ConstValue) Calculate(values map[string]Value) error {
 	return nil
 }
 
-func (c *ConstValue) Get() string {
+func (c *ConstValue) GetKey() string {
+	return c.Key
+}
+
+func (c *ConstValue) GetValue() string {
 	return c.RawValue
 }
 
 func (c *ConstValue) Read(s *Reader) Issue {
 	l := s.Location()
 	p := s.Position()
-	for _, ch := range c.Get() {
+	for _, ch := range c.GetValue() {
 		if ch != s.Peek() {
 			s.SetPosition(p)
 			f := s.ReadWhile(func(r rune) bool {
 				return r != '\n'
 			})
-			return NewIssueWithLocation(fmt.Sprintf("Expected:%v, Actual: %v", c.Get(), f), l)
+			return NewIssueWithLocation(fmt.Sprintf("Expected:%v, Actual: %v", c.GetValue(), f), l)
 		}
 		s.Next()
 	}
@@ -94,6 +109,7 @@ func (c *ConstValue) Read(s *Reader) Issue {
 }
 
 type RegexpValue struct {
+	Key      string
 	RawValue string
 }
 
@@ -106,13 +122,17 @@ func (r *RegexpValue) Calculate(values map[string]Value) error {
 	return nil
 }
 
-func (r *RegexpValue) Get() string {
+func (c *RegexpValue) GetKey() string {
+	return c.Key
+}
+
+func (r *RegexpValue) GetValue() string {
 	return r.RawValue
 }
 
 func (r *RegexpValue) Read(s *Reader) Issue {
 	l := s.Location()
-	p := regexp.MustCompile(r.Get())
+	p := regexp.MustCompile(r.GetValue())
 	pos := s.Position()
 	str := s.Finish()
 	s.SetPosition(pos)
