@@ -17,14 +17,17 @@
 package goheader
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 )
 
+const maxRecursionLevel = 15
+
 type Calculable interface {
-	Calculate(map[string]Value) error
+	Calculate(context.Context) error
 	Get() string
 	Raw() string
 }
@@ -34,11 +37,20 @@ type Value interface {
 	Read(*Reader) Issue
 }
 
-func calculateValue(calculable Calculable, values map[string]Value) (string, error) {
-	sb := strings.Builder{}
-	r := calculable.Raw()
-	var endIndex int
-	var startIndex int
+func calculateValue(ctx context.Context, calculable Calculable) (string, error) {
+	var (
+		sb                   = strings.Builder{}
+		r                    = calculable.Raw()
+		startIndex, endIndex int
+	)
+	var level int
+	if v := ctx.Value("level"); v != nil {
+		level = v.(int)
+	}
+	if level > maxRecursionLevel {
+		return "", errors.New("recursion detected")
+	}
+	ctx = context.WithValue(ctx, "level", level+1)
 	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
 		_, _ = sb.WriteString(r[:startIndex])
 		endIndex = strings.Index(r, "}}")
@@ -46,11 +58,11 @@ func calculateValue(calculable Calculable, values map[string]Value) (string, err
 			return "", errors.New("missed value ending")
 		}
 		subVal := strings.ToLower(strings.TrimSpace(r[startIndex+2 : endIndex]))
-		if val := values[subVal]; val != nil {
-			if err := val.Calculate(values); err != nil {
+		if val := ctx.Value(subVal); val != nil {
+			if err := val.(Value).Calculate(ctx); err != nil {
 				return "", err
 			}
-			sb.WriteString(val.Get())
+			sb.WriteString(val.(Value).Get())
 		} else {
 			return "", fmt.Errorf("unknown value name %v", subVal)
 		}
@@ -65,8 +77,8 @@ type ConstValue struct {
 	RawValue, Value string
 }
 
-func (c *ConstValue) Calculate(values map[string]Value) error {
-	v, err := calculateValue(c, values)
+func (c *ConstValue) Calculate(ctx context.Context) error {
+	v, err := calculateValue(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -109,8 +121,8 @@ type RegexpValue struct {
 	RawValue, Value string
 }
 
-func (r *RegexpValue) Calculate(values map[string]Value) error {
-	v, err := calculateValue(r, values)
+func (r *RegexpValue) Calculate(ctx context.Context) error {
+	v, err := calculateValue(ctx, r)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2024 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -16,7 +16,10 @@
 
 package goheader
 
-import "strings"
+import (
+	"context"
+	"strings"
+)
 
 type Option interface {
 	apply(*Analyzer)
@@ -30,9 +33,8 @@ func (f applyAnalyzerOptionFunc) apply(a *Analyzer) {
 
 func WithValues(values map[string]Value) Option {
 	return applyAnalyzerOptionFunc(func(a *Analyzer) {
-		a.values = make(map[string]Value)
 		for k, v := range values {
-			a.values[strings.ToLower(k)] = v
+			a.values = context.WithValue(a.values, strings.ToLower(k), v)
 		}
 	})
 }
