@@ -48,6 +48,66 @@ func header(header string) *goheader.Target {
 		Path: os.TempDir(),
 	}
 }
+
+func TestAnalyzer_Analyze6(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("A {{ some-value }} B"),
+		goheader.WithValues(map[string]goheader.Value{
+			"SOME-VALUE": &goheader.ConstValue{
+				RawValue: "{{ some-value }}",
+			},
+		}),
+	)
+	var issue = a.Analyze(header("A {{ SOME-VALUE }} B"))
+	require.NotNil(t, issue)
+	require.Contains(t, issue.Message(), "recursion detected")
+	issue = a.Analyze(header("A {{ SOME-VALUE }} C"))
+	require.NotNil(t, issue)
+	require.Contains(t, issue.Message(), "recursion detected")
+}
+
+func TestAnalyzer_Analyze7(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("A {{ some-value1 }} B"),
+		goheader.WithValues(map[string]goheader.Value{
+			"SOME-VALUE1": &goheader.ConstValue{
+				RawValue: "{{ some-value1 }}",
+			},
+			"SOME-VALUE2": &goheader.ConstValue{
+				RawValue: "{{ some-value2 }}",
+			},
+		}),
+	)
+	var issue = a.Analyze(header("A {{ SOME-VALUE }} B"))
+	require.NotNil(t, issue)
+	require.Contains(t, issue.Message(), "recursion detected")
+	issue = a.Analyze(header("A {{ SOME-VALUE }} C"))
+	require.NotNil(t, issue)
+	require.Contains(t, issue.Message(), "recursion detected")
+}
+func TestAnalyzer_Analyze8(t *testing.T) {
+	a := goheader.New(
+		goheader.WithTemplate("A {{ some-value3 }} B"),
+		goheader.WithValues(map[string]goheader.Value{
+			"SOME-VALUE1": &goheader.ConstValue{
+				RawValue: "{{ some-value2 }}",
+			},
+			"SOME-VALUE2": &goheader.ConstValue{
+				RawValue: "{{ some-value3 }}",
+			},
+			"SOME-VALUE3": &goheader.ConstValue{
+				RawValue: "{{ some-value1 }}",
+			},
+		}),
+	)
+	var issue = a.Analyze(header("A {{ SOME-VALUE }} B"))
+	require.NotNil(t, issue)
+	require.Contains(t, issue.Message(), "recursion detected")
+	issue = a.Analyze(header("A {{ SOME-VALUE }} C"))
+	require.NotNil(t, issue)
+	require.Contains(t, issue.Message(), "recursion detected")
+}
+
 func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 	var conf goheader.Configuration
 	var vals, err = conf.GetValues()

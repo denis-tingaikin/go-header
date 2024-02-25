@@ -17,6 +17,7 @@
 package goheader
 
 import (
+	"context"
 	"fmt"
 	"go/ast"
 	"os"
@@ -48,24 +49,21 @@ func (t *Target) ModTime() (time.Time, error) {
 }
 
 type Analyzer struct {
-	values   map[string]Value
+	values   context.Context
 	template string
 }
 
-func (a *Analyzer) processPerTargetValues(target *Target) error {
-	a.values["mod-year"] = a.values["year"]
-	a.values["mod-year-range"] = a.values["year-range"]
+func (a *Analyzer) processPerTargetValues(target *Target) context.Context {
+	var ctx = a.values
+	ctx = context.WithValue(ctx, "mod-year", ctx.Value("year"))
+	ctx = context.WithValue(ctx, "mod-year-range", ctx.Value("year-range"))
+
 	if t, err := target.ModTime(); err == nil {
-		a.values["mod-year"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
-		a.values["mod-year-range"] = &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`}
+		ctx = context.WithValue(ctx, "mod-year", &ConstValue{RawValue: fmt.Sprint(t.Year())})
+		ctx = context.WithValue(ctx, "mod-year-range", &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`})
 	}
 
-	for _, v := range a.values {
-		if err := v.Calculate(a.values); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ctx
 }
 
 func (a *Analyzer) Analyze(target *Target) (i Issue) {
@@ -73,9 +71,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		return NewIssue("Missed template for check")
 	}
 
-	if err := a.processPerTargetValues(target); err != nil {
-		return &issue{msg: err.Error()}
-	}
+	var values = a.processPerTargetValues(target)
 
 	file := target.File
 	var header string
@@ -94,7 +90,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		if i == nil {
 			return
 		}
-		fix, ok := a.generateFix(i, file, header)
+		fix, ok := a.generateFix(values, i, file, header)
 		if !ok {
 			return
 		}
@@ -111,10 +107,14 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		templateCh := t.Peek()
 		if templateCh == '{' {
 			name := a.readField(t)
-			if a.values[name] == nil {
+			if values.Value(name) == nil {
 				return NewIssue(fmt.Sprintf("Template has unknown value: %v", name))
 			}
-			if i := a.values[name].Read(s); i != nil {
+			var v = values.Value(name).(Value)
+			if err := v.Calculate(values); err != nil {
+				return &issue{location: t.location, msg: err.Error()}
+			}
+			if i := v.Read(s); i != nil {
 				return i
 			}
 			continue
@@ -158,27 +158,27 @@ func (a *Analyzer) readField(reader *Reader) string {
 }
 
 func New(options ...Option) *Analyzer {
-	a := &Analyzer{values: make(map[string]Value)}
+	a := &Analyzer{values: context.Background()}
 	for _, o := range options {
 		o.apply(a)
 	}
 	return a
 }
 
-func (a *Analyzer) generateFix(i Issue, file *ast.File, header string) (Fix, bool) {
+func (a *Analyzer) generateFix(values context.Context, i Issue, file *ast.File, header string) (Fix, bool) {
 	var expect string
 	t := NewReader(a.template)
 	for !t.Done() {
 		ch := t.Peek()
 		if ch == '{' {
-			f := a.values[a.readField(t)]
+			f := values.Value(a.readField(t))
 			if f == nil {
 				return Fix{}, false
 			}
-			if f.Calculate(a.values) != nil {
+			if f.(Value).Calculate(values) != nil {
 				return Fix{}, false
 			}
-			expect += f.Get()
+			expect += f.(Value).Get()
 			continue
 		}
 
