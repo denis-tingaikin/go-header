@@ -52,15 +52,31 @@ type Analyzer struct {
 	template string
 }
 
+func (a *Analyzer) processPerTargetValues(target *Target) error {
+	a.values["mod-year"] = a.values["year"]
+	a.values["mod-year-range"] = a.values["year-range"]
+	if t, err := target.ModTime(); err == nil {
+		a.values["mod-year"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
+		a.values["mod-year-range"] = &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`}
+	}
+
+	for _, v := range a.values {
+		if err := v.Calculate(a.values); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *Analyzer) Analyze(target *Target) (i Issue) {
 	if a.template == "" {
 		return NewIssue("Missed template for check")
 	}
-	if t, err := target.ModTime(); err == nil {
-		if t.Year() != time.Now().Year() {
-			return nil
-		}
+
+	if err := a.processPerTargetValues(target); err != nil {
+		return &issue{msg: err.Error()}
 	}
+
 	file := target.File
 	var header string
 	var offset = Location{
@@ -142,15 +158,9 @@ func (a *Analyzer) readField(reader *Reader) string {
 }
 
 func New(options ...Option) *Analyzer {
-	a := &Analyzer{}
+	a := &Analyzer{values: make(map[string]Value)}
 	for _, o := range options {
 		o.apply(a)
-	}
-	for _, v := range a.values {
-		err := v.Calculate(a.values)
-		if err != nil {
-			panic(err.Error())
-		}
 	}
 	return a
 }
