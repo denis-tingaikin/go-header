@@ -87,8 +87,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		return NewIssueWithLocation(
 			"Missing a newline after the header. Consider adding a newline separator right after the copyright header.",
 			Location{
-				Position: int(file.Comments[0].End()),
-				Line:     countLines(file.Comments[0].Text()),
+				Line: countLines(file.Comments[0].Text()),
 			},
 		)
 	}
@@ -278,7 +277,7 @@ func isNewLinewRequired(group []*ast.CommentGroup) bool {
 	if len(group) < 2 {
 		return false
 	}
-	return group[0].End()+group[0].Pos() >= group[1].Pos()
+	return group[0].End() >= group[1].Pos()
 }
 
 func countLines(text string) int {
