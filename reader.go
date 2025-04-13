@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2020-2022 Denis Tingaikin
+Copyright (c) 2020-2025 Denis Tingaikin
 
 SPDX-License-Identifier: Apache-2.0
 
@@ -15,14 +15,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package goheader
 
 func NewReader(text string) *Reader {
-	return &Reader{source: text}
+	return &Reader{source: []rune(text)}
 }
 
 type Reader struct {
-	source   string
+	source   []rune
 	position int
 	location Location
 	offset   Location
@@ -44,7 +45,7 @@ func (r *Reader) Peek() rune {
 	if r.Done() {
 		return rune(0)
 	}
-	return rune(r.source[r.position])
+	return r.source[r.position]
 }
 
 func (r *Reader) Done() bool {
@@ -55,15 +56,15 @@ func (r *Reader) Next() rune {
 	if r.Done() {
 		return rune(0)
 	}
-	reuslt := r.Peek()
-	if reuslt == '\n' {
+	result := r.Peek()
+	if result == '\n' {
 		r.location.Line++
 		r.location.Position = 0
 	} else {
 		r.location.Position++
 	}
 	r.position++
-	return reuslt
+	return result
 }
 
 func (r *Reader) Finish() string {
@@ -71,7 +72,7 @@ func (r *Reader) Finish() string {
 		return ""
 	}
 	defer r.till()
-	return r.source[r.position:]
+	return string(r.source[r.position:])
 }
 
 func (r *Reader) SetPosition(pos int) {
@@ -90,7 +91,7 @@ func (r *Reader) ReadWhile(match func(rune) bool) string {
 	for !r.Done() && match(r.Peek()) {
 		r.Next()
 	}
-	return r.source[start:r.position]
+	return string(r.source[start:r.position])
 }
 
 func (r *Reader) till() {
@@ -99,12 +100,9 @@ func (r *Reader) till() {
 }
 
 func (r *Reader) calculateLocation() Location {
-	min := len(r.source)
-	if min > r.position {
-		min = r.position
-	}
+	minVal := min(len(r.source), r.position)
 	x, y := 0, 0
-	for i := 0; i < min; i++ {
+	for i := 0; i < minVal; i++ {
 		if r.source[i] == '\n' {
 			y++
 			x = 0

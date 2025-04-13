@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2024 Denis Tingaikin
+// Copyright (c) 2020-2025 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -74,7 +74,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 	}
 
 	if err := a.processPerTargetValues(target); err != nil {
-		return &issue{msg: err.Error()}
+		return NewIssue(err.Error())
 	}
 
 	file := target.File
@@ -82,6 +82,17 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 	var offset = Location{
 		Position: 1,
 	}
+
+	if isNewLinewRequired(file.Comments) {
+		return NewIssueWithLocation(
+			"Missing a newline after the header. Consider adding a newline separator right after the copyright header.",
+			Location{
+				Position: int(file.Comments[0].End()),
+				Line:     countLines(file.Comments[0].Text()),
+			},
+		)
+	}
+
 	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
 		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
 			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
@@ -253,4 +264,38 @@ func (a *Analyzer) generateFix(i Issue, file *ast.File, header string) (Fix, boo
 
 	fix.Actual = append(fix.Actual, strings.Split(actual, "\n")...)
 	return fix, true
+}
+
+func isNewLinewRequired(group []*ast.CommentGroup) bool {
+	if len(group[0].List) > 1 {
+		for _, item := range group[0].List {
+			if strings.HasPrefix(item.Text, "/*") {
+				return true
+			}
+		}
+	}
+
+	if len(group) < 2 {
+		return false
+	}
+	return group[0].End()+group[0].Pos() >= group[1].Pos()
+}
+
+func countLines(text string) int {
+	if text == "" {
+		return 0
+	}
+
+	lines := 1
+	for i := 0; i < len(text); i++ {
+		if text[i] == '\n' {
+			lines++
+		} else if text[i] == '\r' {
+			lines++
+			if i+1 < len(text) && text[i+1] == '\n' {
+				i++
+			}
+		}
+	}
+	return lines
 }
