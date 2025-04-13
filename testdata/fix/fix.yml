@@ -1,0 +1,8 @@
+template: |-
+  {{ MY COMPANY }}
+  SPDX-License-Identifier: Foo
+
+values:
+  const:
+    'MY COMPANY': 'mycompany.com'
+
