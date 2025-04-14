@@ -1,0 +1,8 @@
+template: |-
+  A {{ YEAR }}
+  B
+
+values:
+  const:
+    'YEAR': '2020'
+

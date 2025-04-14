@@ -29,7 +29,7 @@ import (
 // Configuration represents go-header linter setup parameters
 type Configuration struct {
 	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
-	Values map[string]map[string]string `yaml:"values"'`
+	Values map[string]map[string]string `yaml:"values"`
 	// Template is template for checking. Uses values.
 	Template string `yaml:"template"`
 	// TemplatePath path to the template file. Useful if need to load the template from a specific file.
