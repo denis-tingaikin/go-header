@@ -31,10 +31,18 @@ go install github.com/denis-tingaikin/go-header/cmd/go-header@latest
 To configuring `.go-header.yml` linter you simply need to fill the next fields:
 
 
+Inline template:
 ```yaml
 ---
 template: # expects header template string.
-template-path: # expects path to file with license header string. 
+vars: # expects valid key value paris where key is string, value is regexp.
+  key1: value1 # const value just checks equality. Note `key1` should be used in template string as {{ .key1 }} or {{ .KEY1 }}.
+  key2: value2(.*) # regexp value just checks regex match. The value should be a valid regexp pattern. Note `key2` should be used in template string as {{ .key2 }} or {{ .KEY2 }}.
+```
+Filebased template:
+```yaml
+---
+template-path: # expects header template path string.
 vars: # expects `const` or `regexp` node with values where values is a map string to string.
   key1: value1 # const value just checks equality. Note `key1` should be used in template string as {{ key1 }} or {{ KEY1 }}.
   key2: value2(.*) # regexp value just checks regex match. The value should be a valid regexp pattern. Note `key2` should be used in template string as {{ key2 }} or {{ KEY2 }}.
