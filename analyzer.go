@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type Target struct {
@@ -83,7 +84,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		Position: 1,
 	}
 
-	if isNewLinewRequired(file.Comments) {
+	if isNewLineRequired(file.Comments) {
 		return NewIssueWithLocation(
 			"Missing a newline after the header. Consider adding a newline separator right after the copyright header.",
 			Location{
@@ -156,6 +157,12 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 func (a *Analyzer) readField(reader *Reader) string {
 	_ = reader.Next()
 	_ = reader.Next()
+
+	_ = reader.ReadWhile(unicode.IsSpace)
+
+	if reader.Peek() == '.' {
+		_ = reader.Next()
+	}
 
 	r := reader.ReadWhile(func(r rune) bool {
 		return r != '}'
@@ -265,7 +272,7 @@ func (a *Analyzer) generateFix(i Issue, file *ast.File, header string) (Fix, boo
 	return fix, true
 }
 
-func isNewLinewRequired(group []*ast.CommentGroup) bool {
+func isNewLineRequired(group []*ast.CommentGroup) bool {
 	if len(group[0].List) > 1 {
 		for _, item := range group[0].List {
 			if strings.HasPrefix(item.Text, "/*") {

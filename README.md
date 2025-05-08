@@ -72,11 +72,10 @@ Create configuration file  `.go-header.yml` in the root of project.
 
 ```yaml
 ---
-values:
-  const:
-    MY COMPANY: mycompany.com
+vars:
+  MY_COMPANY: mycompany.com
 template: |
-  {{ MY COMPANY }}
+  {{ .MY_COMPANY }}
   SPDX-License-Identifier: Apache-2.0
 
   Licensed under the Apache License, Version 2.0 (the "License");

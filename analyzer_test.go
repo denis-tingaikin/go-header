@@ -311,7 +311,7 @@ func TestAnalyzer_Analyze3(t *testing.T) {
 		goheader.WithTemplate("{{COPYRIGHT HOLDER}}TEXT"),
 		goheader.WithValues(map[string]goheader.Value{
 			"COPYRIGHT HOLDER": &goheader.RegexpValue{
-				RawValue: "(A {{ YEAR }}\n(.*)\n)+",
+				RawValue: "(A {{ .YEAR }}\n(.*)\n)+",
 			},
 			"YEAR": &goheader.ConstValue{
 				RawValue: "2020",
