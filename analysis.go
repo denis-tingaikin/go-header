@@ -26,36 +26,14 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-func NewAnalyzer(config *string) *analysis.Analyzer {
-	var goheaderOncer sync.Once
-	var goheader *Analyzer
-
+// NewAnalyzer creates new analyzer based on template and goheader values
+func NewAnalyzer(templ string, vars map[string]Value) *analysis.Analyzer {
+	var goheader = New(WithTemplate(templ), WithValues(vars))
 	return &analysis.Analyzer{
 		Doc:  "the_only_doc",
 		URL:  "https://github.com/denis-tingaikin/go-header",
 		Name: "goheader",
 		Run: func(p *analysis.Pass) (any, error) {
-			var err error
-			goheaderOncer.Do(func() {
-				var cfg Config
-				if err = cfg.Parse(*config); err != nil {
-					return
-				}
-				templ, err := cfg.GetTemplate()
-				if err != nil {
-					return
-				}
-				vars, err := cfg.GetValues()
-				if err != nil {
-					return
-				}
-				goheader = New(WithTemplate(templ), WithValues(vars))
-			})
-
-			if err != nil {
-				return nil, err
-			}
-
 			var wg sync.WaitGroup
 
 			var jobCh = make(chan *ast.File, len(p.Files))
@@ -143,6 +121,41 @@ func NewAnalyzer(config *string) *analysis.Analyzer {
 
 			wg.Wait()
 			return nil, nil
+		},
+	}
+}
+
+// NewAnalyzerFromConfig creates a new analysis.Analyzer from goheader config file
+func NewAnalyzerFromConfig(config *string) *analysis.Analyzer {
+	var goheaderOncer sync.Once
+	var goheader *analysis.Analyzer
+
+	return &analysis.Analyzer{
+		Doc:  "the_only_doc",
+		URL:  "https://github.com/denis-tingaikin/go-header",
+		Name: "goheader",
+		Run: func(p *analysis.Pass) (any, error) {
+			var err error
+			goheaderOncer.Do(func() {
+				var cfg Config
+				if err = cfg.Parse(*config); err != nil {
+					return
+				}
+				templ, err := cfg.GetTemplate()
+				if err != nil {
+					return
+				}
+				vars, err := cfg.GetValues()
+				if err != nil {
+					return
+				}
+				goheader = NewAnalyzer(templ, vars)
+			})
+
+			if err != nil {
+				return nil, err
+			}
+			return goheader.Run(p)
 		},
 	}
 }

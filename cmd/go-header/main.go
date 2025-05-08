@@ -46,7 +46,7 @@ func main() {
 
 	var configPath string
 	flagSet.StringVar(&configPath, "config", defaultConfigPath, "Path to config file")
-	var analyser = goheader.NewAnalyzer(&configPath)
+	var analyser = goheader.NewAnalyzerFromConfig(&configPath)
 	analyser.Flags = flagSet
 
 	singlechecker.Main(analyser)
