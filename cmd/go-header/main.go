@@ -46,7 +46,7 @@ func main() {
 			return
 		}
 	}
-	c := &goheader.Configuration{}
+	c := &goheader.Config{}
 	if err := c.Parse(configPath); err != nil {
 		log.Fatal(err.Error())
 	}

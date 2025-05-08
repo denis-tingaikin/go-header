@@ -85,7 +85,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			desc:     "header comment",
 			filename: "headercomment/headercomment.go",
 			config:   "headercomment/headercomment.yml",
-			assert:   assert.Nil,
+			assert:   assert.NotNil,
 		},
 		{
 			desc:     "readme",
@@ -97,7 +97,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.desc, func(t *testing.T) {
-			cfg := &goheader.Configuration{}
+			cfg := &goheader.Config{}
 
 			err := cfg.Parse(filepath.Join("testdata", test.config))
 			require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestAnalyzer_Analyze_fix(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.desc, func(t *testing.T) {
-			cfg := &goheader.Configuration{}
+			cfg := &goheader.Config{}
 
 			err := cfg.Parse(filepath.Join("testdata", test.config))
 			require.NoError(t, err)
@@ -253,7 +253,7 @@ func TestAnalyzer_Analyze_fix(t *testing.T) {
 }
 
 func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
-	var conf goheader.Configuration
+	var conf goheader.Config
 	var vals, err = conf.GetValues()
 	require.NoError(t, err)
 

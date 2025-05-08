@@ -1,8 +1,7 @@
 template: |-
-  {{ MY COMPANY }}
+  {{ .MY_COMPANY }}
   SPDX-License-Identifier: Foo
 
-values:
-  const:
-    'MY COMPANY': 'mycompany.com'
+vars:
+  'MY_COMPANY': 'mycompany.com'
 

@@ -1,8 +1,7 @@
 template: |-
-  A {{ YEAR }}
+  A {{ .YEAR }}
   B
 
-values:
-  const:
-    'YEAR': '2020'
+vars:
+  'YEAR': '2020'
 
