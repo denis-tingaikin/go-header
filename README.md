@@ -73,7 +73,8 @@ Create configuration file  `.go-header.yml` in the root of project.
 ```yaml
 ---
 vars:
-  MY_COMPANY: mycompany.com
+  DOMAIN: sales|product
+  MY_COMPANY: {{ .DOMAIN }}.mycompany.com
 template: |
   {{ .MY_COMPANY }}
   SPDX-License-Identifier: Apache-2.0
@@ -92,4 +93,4 @@ template: |
 ```
 
 ### Step 2 
-You are ready! Execute `go-header ${PATH_TO_FILES}` from the root of the project. 
+Run `go-header ./...`

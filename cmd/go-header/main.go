@@ -18,22 +18,16 @@ package main
 
 import (
 	"fmt"
-	"go/parser"
-	"go/token"
 	"os"
 
 	"log"
 
 	goheader "github.com/denis-tingaikin/go-header"
 	"github.com/denis-tingaikin/go-header/version"
+	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
-const configPath = ".go-header.yml"
-
-type issue struct {
-	goheader.Issue
-	filePath string
-}
+const defaultConfigPath = ".go-header.yml"
 
 func main() {
 	paths := os.Args[1:]
@@ -47,40 +41,17 @@ func main() {
 		}
 	}
 	c := &goheader.Config{}
-	if err := c.Parse(configPath); err != nil {
+	if err := c.Parse(defaultConfigPath); err != nil {
 		log.Fatal(err.Error())
 	}
-	v, err := c.GetValues()
+	tmpl, err := c.GetTemplate()
 	if err != nil {
-		log.Fatalf("Can not get values: %v", err.Error())
+		log.Fatal(err.Error())
 	}
-	t, err := c.GetTemplate()
+	vals, err := c.GetValues()
 	if err != nil {
-		log.Fatalf("Can not get template: %v", err.Error())
+		log.Fatal(err.Error())
 	}
-	a := goheader.New(goheader.WithValues(v), goheader.WithTemplate(t))
-	s := token.NewFileSet()
-	var issues []*issue
-	for _, p := range paths {
-		f, err := parser.ParseFile(s, p, nil, parser.ParseComments)
-		if err != nil {
-			log.Fatalf("File %v can not be parsed due compilation errors %v", p, err.Error())
-		}
-		i := a.Analyze(&goheader.Target{
-			Path: p,
-			File: f,
-		})
-		if i != nil {
-			issues = append(issues, &issue{
-				Issue:    i,
-				filePath: p,
-			})
-		}
-	}
-	if len(issues) > 0 {
-		for _, issue := range issues {
-			fmt.Printf("%v:%v\n%v\n", issue.filePath, issue.Location(), issue.Message())
-		}
-		os.Exit(-1)
-	}
+
+	singlechecker.Main(goheader.NewAnalyzer(tmpl, vals))
 }

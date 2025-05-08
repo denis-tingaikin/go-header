@@ -53,28 +53,35 @@ type Analyzer struct {
 	template string
 }
 
-func (a *Analyzer) processPerTargetValues(target *Target) error {
-	a.values["mod-year"] = a.values["year"]
-	a.values["mod-year-range"] = a.values["year-range"]
-	if t, err := target.ModTime(); err == nil {
-		a.values["mod-year"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
-		a.values["mod-year-range"] = &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`}
+func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) {
+	var res = make(map[string]Value)
+
+	for k, v := range a.values {
+		res[k] = v
 	}
 
-	for _, v := range a.values {
-		if err := v.Calculate(a.values); err != nil {
-			return err
+	res["mod-year"] = a.values["year"]
+	res["mod-year-range"] = a.values["year-range"]
+	if t, err := target.ModTime(); err == nil {
+		res["mod-year"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
+		res["mod-year-range"] = &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`}
+	}
+
+	for _, v := range res {
+		if err := v.Calculate(res); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+
+	return res, nil
 }
 
 func (a *Analyzer) Analyze(target *Target) (i Issue) {
 	if a.template == "" {
 		return NewIssue("Missed template for check")
 	}
-
-	if err := a.processPerTargetValues(target); err != nil {
+	vals, err := a.getPerTargetValues(target)
+	if err != nil {
 		return NewIssue(err.Error())
 	}
 
@@ -107,7 +114,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		if i == nil {
 			return
 		}
-		fix, ok := a.generateFix(i, file, header)
+		fix, ok := a.generateFix(i, file, header, vals)
 		if !ok {
 			return
 		}
@@ -125,10 +132,10 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		templateCh := t.Peek()
 		if templateCh == '{' {
 			name := a.readField(t)
-			if a.values[name] == nil {
+			if vals[name] == nil {
 				return NewIssue(fmt.Sprintf("Template has unknown value: %v", name))
 			}
-			if i := a.values[name].Read(s); i != nil {
+			if i := vals[name].Read(s); i != nil {
 				return i
 			}
 			continue
@@ -185,17 +192,17 @@ func New(options ...Option) *Analyzer {
 	return a
 }
 
-func (a *Analyzer) generateFix(i Issue, file *ast.File, header string) (Fix, bool) {
+func (a *Analyzer) generateFix(i Issue, file *ast.File, header string, vals map[string]Value) (Fix, bool) {
 	var expect string
 	t := NewReader(a.template)
 	for !t.Done() {
 		ch := t.Peek()
 		if ch == '{' {
-			f := a.values[a.readField(t)]
+			f := vals[a.readField(t)]
 			if f == nil {
 				return Fix{}, false
 			}
-			if f.Calculate(a.values) != nil {
+			if f.Calculate(vals) != nil {
 				return Fix{}, false
 			}
 			expect += f.Get()
