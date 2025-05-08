@@ -96,6 +96,8 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
 		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
 			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
+
+			header = handleStarBlock(header)
 		} else {
 			header = file.Comments[0].Text()
 			offset.Position += 3
@@ -112,6 +114,7 @@ func (a *Analyzer) Analyze(target *Target) (i Issue) {
 		i = NewIssueWithFix(i.Message(), i.Location(), fix)
 	}()
 	header = strings.TrimSpace(header)
+
 	if header == "" {
 		return NewIssue("Missed header for check")
 	}
@@ -304,4 +307,27 @@ func countLines(text string) int {
 		}
 	}
 	return lines
+}
+
+func handleStarBlock(header string) string {
+	return trimEachLine(header, func(s string) string {
+		var trimmed = strings.TrimSpace(s)
+		if !strings.HasPrefix(trimmed, "*") {
+			return s
+		}
+		if v, ok := strings.CutPrefix(trimmed, "* "); ok {
+			return v
+		} else {
+			var res, _ = strings.CutPrefix(trimmed, "*")
+			return res
+		}
+	})
+}
+
+func trimEachLine(input string, trimFunc func(string) string) string {
+	lines := strings.Split(input, "\n")
+	for i, line := range lines {
+		lines[i] = trimFunc(line)
+	}
+	return strings.Join(lines, "\n")
 }

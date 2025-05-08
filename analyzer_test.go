@@ -93,6 +93,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			config:   "readme/readme.yml",
 			assert:   assert.Nil,
 		},
+		{
+			desc:     "star-block like header",
+			filename: "starcomment/starcomment.go",
+			config:   "starcomment/starcomment.yml",
+			assert:   assert.Nil,
+		},
 	}
 
 	for _, test := range testCases {

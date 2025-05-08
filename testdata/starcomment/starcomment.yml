@@ -1,0 +1,7 @@
+template: |-
+  A {{ .YEAR }}
+  B
+
+vars:
+  'YEAR': '2020'
+
