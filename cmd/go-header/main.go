@@ -17,6 +17,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -27,7 +28,9 @@ import (
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
-const defaultConfigPath = ".go-header.yml"
+var defaultConfigPath = ".go-header.yml"
+
+var flagSet flag.FlagSet
 
 func main() {
 	paths := os.Args[1:]
@@ -40,18 +43,11 @@ func main() {
 			return
 		}
 	}
-	c := &goheader.Config{}
-	if err := c.Parse(defaultConfigPath); err != nil {
-		log.Fatal(err.Error())
-	}
-	tmpl, err := c.GetTemplate()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	vals, err := c.GetValues()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
 
-	singlechecker.Main(goheader.NewAnalyzer(tmpl, vals))
+	var configPath string
+	flagSet.StringVar(&configPath, "config", defaultConfigPath, "Path to config file")
+	var analyser = goheader.NewAnalyzer(&configPath)
+	analyser.Flags = flagSet
+
+	singlechecker.Main(analyser)
 }

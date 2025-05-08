@@ -1,7 +1,23 @@
 # go-header
 [![ci](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml)
 
-Go source code linter providing checks for license headers.
+Go source code linter providing checks for license headers. 
+
+## Features
+
+| Feature                     | Status | Details                                  |
+|-----------------------------|--------|------------------------------------------|
+| ✅ **Copyright Headers**     | ✔️     | Supports all standard formats            |
+| ✅ **Parallel Processing**   | ✔️     | Processes files concurrently             |
+| ✅ **Comment Support**       | ✔️     | `//`, `/* */`, `/* * */`|
+| ✅ **Go/Analysis**           | ✔️     | Native Go tooling integration            |
+| ✅ **Regex Customization**   | ✔️     | User-defined pattern matching            |
+| ✅ **Automatic Year Checks** | ✔️     | Validates & updates copyright years      |
+| ✅ **Auto-Fix Files**        | ✔️     | In-place header corrections              |
+| ⏳ **Go/Template Support**   | ❌     | *In development*                         |
+| ⏳ **Multi-License Support** | ❌     | *Planned*                                |
+
+
 
 ## Installation
 
@@ -61,7 +77,7 @@ values:
 `go-header` linter expects file paths on input. If you want to run `go-header` only on diff files, then you can use this command:
 
 ```bash
-go-header $(git diff --name-only | grep -E '.*\.go')
+go-header ./...
 ```
 
 ## Setup example
