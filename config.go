@@ -42,10 +42,10 @@ type Config struct {
 func (c *Config) builtInValues() map[string]Value {
 	var result = make(map[string]Value)
 	year := fmt.Sprint(time.Now().Year())
-	result["year-range"] = &RegexpValue{
-		RawValue: `((20\d\d\-{{YEAR}})|({{YEAR}}))`,
+	result["YEAR_RANGE"] = &RegexpValue{
+		RawValue: `((20\d\d\-{{.YEAR}})|({{.YEAR}}))`,
 	}
-	result["year"] = &ConstValue{
+	result["YEAR"] = &ConstValue{
 		RawValue: year,
 	}
 	return result
@@ -61,8 +61,7 @@ func (c *Config) GetValues() (map[string]Value, error) {
 	}
 	appendValues := func(m map[string]string, create func(string) Value) {
 		for k, v := range m {
-			key := strings.ToLower(k)
-			result[key] = create(v)
+			result[k] = create(v)
 		}
 	}
 	appendValues(c.Values["const"], createConst)

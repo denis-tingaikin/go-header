@@ -17,13 +17,24 @@
 package goheader
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
+	"text/template"
 	"time"
-	"unicode"
+)
+
+type CommentStyleType int
+
+const (
+	DoubleSlash CommentStyleType = iota
+	MultiLine
+	MultiLineStar
 )
 
 type Target struct {
@@ -53,6 +64,120 @@ type Analyzer struct {
 	template string
 }
 
+func New(opts ...Option) *Analyzer {
+	var a Analyzer
+	for _, opt := range opts {
+		opt.apply(&a)
+	}
+	return &a
+}
+
+type Result struct {
+	Err error
+	Fix string
+}
+
+func (a *Analyzer) Analyze(t *Target) *Result {
+	file := t.File
+	header := ""
+
+	var style CommentStyleType
+
+	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
+		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
+			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
+			style = MultiLine
+
+			if handledHeader, ok := handleStarBlock(header); ok {
+				header = handledHeader
+				style = MultiLineStar
+			}
+
+		} else {
+			style = DoubleSlash
+			header = file.Comments[0].Text()
+		}
+	}
+	header = strings.TrimSpace(header)
+
+	vars, err := a.getPerTargetValues(t)
+	if err != nil {
+		return &Result{Err: err}
+	}
+
+	templateRaw := quoteMeta(a.template)
+
+	template, err := template.New("header").Parse(templateRaw)
+	if err != nil {
+		return &Result{Err: err}
+	}
+
+	res := new(bytes.Buffer)
+
+	if err := template.Execute(res, vars); err != nil {
+		return &Result{Err: err}
+	}
+
+	headerTemplate := res.String()
+
+	r, err := regexp.Compile(headerTemplate)
+
+	if err != nil {
+		return &Result{Err: err}
+	}
+
+	if !r.MatchString(header) {
+		// log.Println(header)
+		// log.Println("template " + headerTemplate)
+		return &Result{Err: errors.New("template doens't match"), Fix: a.generateFix(style, vars)}
+	}
+
+	return &Result{}
+}
+
+func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) string {
+	// TODO: add values for quick fixes in config
+	vals["YEAR_RANGE"] = vals["YEAR"]
+	vals["MOD_YEAR_RANGE"] = vals["YEAR"]
+
+	for _, v := range vals {
+		_ = v.Calculate(vals)
+	}
+
+	fixTemplate, err := template.New("fix").Parse(a.template)
+	if err != nil {
+		return ""
+	}
+	fixOut := new(bytes.Buffer)
+	_ = fixTemplate.Execute(fixOut, vals)
+	res := fixOut.String()
+	resSplit := strings.Split(res, "\n")
+	if style == MultiLine {
+		resSplit[0] = "/* " + resSplit[0]
+	}
+
+	for i := range resSplit {
+		switch style {
+		case DoubleSlash:
+			resSplit[i] = "// " + resSplit[i]
+		case MultiLineStar:
+			resSplit[i] = " * " + resSplit[i]
+		case MultiLine:
+			continue
+		}
+	}
+
+	switch style {
+	case MultiLine:
+		resSplit[len(resSplit)-1] = resSplit[len(resSplit)-1] + " */"
+	case MultiLineStar:
+		resSplit = append([]string{"/*"}, resSplit...)
+		resSplit = append(resSplit, " */")
+	}
+
+	return strings.Join(resSplit, "\n")
+}
+
 func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) {
 	var res = make(map[string]Value)
 
@@ -60,11 +185,11 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 		res[k] = v
 	}
 
-	res["mod-year"] = a.values["year"]
-	res["mod-year-range"] = a.values["year-range"]
+	res["MOD_YEAR"] = a.values["YEAR"]
+	res["MOD_YEAR_RANGE"] = a.values["YEAR_RANGE"]
 	if t, err := target.ModTime(); err == nil {
-		res["mod-year"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
-		res["mod-year-range"] = &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`}
+		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
+		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{MOD_YEAR}})|({{MOD_YEAR}}))`}
 	}
 
 	for _, v := range res {
@@ -76,259 +201,64 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 	return res, nil
 }
 
-func (a *Analyzer) Analyze(target *Target) (i Issue) {
-	if a.template == "" {
-		return NewIssue("Missed template for check")
-	}
-	vals, err := a.getPerTargetValues(target)
-	if err != nil {
-		return NewIssue(err.Error())
-	}
+// TODO: Fix vibe conding
+func quoteMeta(text string) string {
+	var result strings.Builder
+	i := 0
+	n := len(text)
 
-	file := target.File
-	var header string
-	var offset = Location{
-		Position: 1,
-	}
-
-	if isNewLineRequired(file.Comments) {
-		return NewIssueWithLocation(
-			"Missing a newline after the header. Consider adding a newline separator right after the copyright header.",
-			Location{
-				Line: countLines(file.Comments[0].Text()),
-			},
-		)
-	}
-
-	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
-		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
-			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
-
-			header = handleStarBlock(header)
-		} else {
-			header = file.Comments[0].Text()
-			offset.Position += 3
-		}
-	}
-	defer func() {
-		if i == nil {
-			return
-		}
-		fix, ok := a.generateFix(i, file, header, vals)
-		if !ok {
-			return
-		}
-		i = NewIssueWithFix(i.Message(), i.Location(), fix)
-	}()
-	header = strings.TrimSpace(header)
-
-	if header == "" {
-		return NewIssue("Missed header for check")
-	}
-	s := NewReader(header)
-	s.SetOffset(offset)
-	t := NewReader(a.template)
-	for !s.Done() && !t.Done() {
-		templateCh := t.Peek()
-		if templateCh == '{' {
-			name := a.readField(t)
-			if vals[name] == nil {
-				return NewIssue(fmt.Sprintf("Template has unknown value: %v", name))
+	for i < n {
+		// Check for template placeholder start
+		if i+3 < n && text[i] == '{' && text[i+1] == '{' {
+			// Find the end of the placeholder
+			end := i + 2
+			for end < n && !(text[end] == '}' && end+1 < n && text[end+1] == '}') {
+				end++
 			}
-			if i := vals[name].Read(s); i != nil {
-				return i
+			if end+1 < n {
+				// Append the entire placeholder without escaping
+				result.WriteString(text[i : end+2])
+				i = end + 2
+				continue
 			}
-			continue
 		}
-		sourceCh := s.Peek()
-		if sourceCh != templateCh {
-			l := s.Location()
-			notNextLine := func(r rune) bool {
-				return r != '\n'
-			}
-			actual := s.ReadWhile(notNextLine)
-			expected := t.ReadWhile(notNextLine)
-			return NewIssueWithLocation(fmt.Sprintf("Actual: %v\nExpected:%v", actual, expected), l)
+
+		// Escape regular expression metacharacters for non-template parts
+		c := text[i]
+		if strings.ContainsAny(string(c), `\.+*?()|[]{}^$`) {
+			result.WriteByte('\\')
 		}
-		s.Next()
-		t.Next()
+		result.WriteByte(c)
+		i++
 	}
-	if !s.Done() {
-		l := s.Location()
-		return NewIssueWithLocation(fmt.Sprintf("Unexpected string: %v", s.Finish()), l)
-	}
-	if !t.Done() {
-		l := s.Location()
-		return NewIssueWithLocation(fmt.Sprintf("Missed string: %v", t.Finish()), l)
-	}
-	return nil
+
+	return result.String()
 }
 
-func (a *Analyzer) readField(reader *Reader) string {
-	_ = reader.Next()
-	_ = reader.Next()
-
-	_ = reader.ReadWhile(unicode.IsSpace)
-
-	if reader.Peek() == '.' {
-		_ = reader.Next()
-	}
-
-	r := reader.ReadWhile(func(r rune) bool {
-		return r != '}'
-	})
-
-	_ = reader.Next()
-	_ = reader.Next()
-
-	return strings.ToLower(strings.TrimSpace(r))
-}
-
-func New(options ...Option) *Analyzer {
-	a := &Analyzer{values: make(map[string]Value)}
-	for _, o := range options {
-		o.apply(a)
-	}
-	return a
-}
-
-func (a *Analyzer) generateFix(i Issue, file *ast.File, header string, vals map[string]Value) (Fix, bool) {
-	var expect string
-	t := NewReader(a.template)
-	for !t.Done() {
-		ch := t.Peek()
-		if ch == '{' {
-			f := vals[a.readField(t)]
-			if f == nil {
-				return Fix{}, false
-			}
-			if f.Calculate(vals) != nil {
-				return Fix{}, false
-			}
-			expect += f.Get()
-			continue
-		}
-
-		expect += string(ch)
-		t.Next()
-	}
-
-	fix := Fix{Expected: strings.Split(expect, "\n")}
-	if !(len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package) {
-		for i := range fix.Expected {
-			fix.Expected[i] = "// " + fix.Expected[i]
-		}
-		return fix, true
-	}
-
-	actual := file.Comments[0].List[0].Text
-	if !strings.HasPrefix(actual, "/*") {
-		for i := range fix.Expected {
-			fix.Expected[i] = "// " + fix.Expected[i]
-		}
-		for _, c := range file.Comments[0].List {
-			fix.Actual = append(fix.Actual, c.Text)
-		}
-		i = NewIssueWithFix(i.Message(), i.Location(), fix)
-		return fix, true
-	}
-
-	gets := func(i int, end bool) string {
-		if i < 0 {
-			return header
-		}
-		if end {
-			return header[i+1:]
-		}
-		return header[:i]
-	}
-	start := strings.Index(actual, gets(strings.IndexByte(header, '\n'), false))
-	if start < 0 {
-		return Fix{}, false // Should be impossible
-	}
-	nl := strings.LastIndexByte(actual[:start], '\n')
-	if nl >= 0 {
-		fix.Actual = strings.Split(actual[:nl], "\n")
-		fix.Expected = append(fix.Actual, fix.Expected...)
-		actual = actual[nl+1:]
-		start -= nl + 1
-	}
-
-	prefix := actual[:start]
-	if nl < 0 {
-		fix.Expected[0] = prefix + fix.Expected[0]
-	} else {
-		n := len(fix.Actual)
-		for i := range fix.Expected[n:] {
-			fix.Expected[n+i] = prefix + fix.Expected[n+i]
-		}
-	}
-
-	last := gets(strings.LastIndexByte(header, '\n'), true)
-	end := strings.Index(actual, last)
-	if end < 0 {
-		return Fix{}, false // Should be impossible
-	}
-
-	trailing := actual[end+len(last):]
-	if i := strings.IndexRune(trailing, '\n'); i < 0 {
-		fix.Expected[len(fix.Expected)-1] += trailing
-	} else {
-		fix.Expected[len(fix.Expected)-1] += trailing[:i]
-		fix.Expected = append(fix.Expected, strings.Split(trailing[i+1:], "\n")...)
-	}
-
-	fix.Actual = append(fix.Actual, strings.Split(actual, "\n")...)
-	return fix, true
-}
-
-func isNewLineRequired(group []*ast.CommentGroup) bool {
-	if len(group[0].List) > 1 {
-		for _, item := range group[0].List {
-			if strings.HasPrefix(item.Text, "/*") {
-				return true
-			}
-		}
-	}
-
-	if len(group) < 2 {
+func isNewLineRequired(group *ast.CommentGroup) bool {
+	if len(group.List) < 2 {
 		return false
 	}
-	return group[0].End() >= group[1].Pos()
+	end := group.List[0].End()
+	pos := group.List[1].Pos()
+	return end+1 >= pos && group.List[0].Text[len(group.List[0].Text)-1] != '\n'
 }
 
-func countLines(text string) int {
-	if text == "" {
-		return 0
-	}
-
-	lines := 1
-	for i := 0; i < len(text); i++ {
-		if text[i] == '\n' {
-			lines++
-		} else if text[i] == '\r' {
-			lines++
-			if i+1 < len(text) && text[i+1] == '\n' {
-				i++
-			}
-		}
-	}
-	return lines
-}
-
-func handleStarBlock(header string) string {
+func handleStarBlock(header string) (string, bool) {
+	var handled = false
 	return trimEachLine(header, func(s string) string {
 		var trimmed = strings.TrimSpace(s)
 		if !strings.HasPrefix(trimmed, "*") {
 			return s
 		}
 		if v, ok := strings.CutPrefix(trimmed, "* "); ok {
+			handled = true
 			return v
 		} else {
 			var res, _ = strings.CutPrefix(trimmed, "*")
 			return res
 		}
-	})
+	}), handled
 }
 
 func trimEachLine(input string, trimFunc func(string) string) string {

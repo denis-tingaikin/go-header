@@ -1,7 +1,7 @@
 vars:
-  copyright-holder: Copyright \(c\) {{mod-year-range}} Denis Tingaikin
+  copyright_holder: "{{ .MOD_YEAR_RANGE}} Denis Tingaikin"
 template: |-
-  {{copyright-holder}}
+  Copyright (c) {{ .copyright_holder }}
 
   SPDX-License-Identifier: Apache-2.0
 

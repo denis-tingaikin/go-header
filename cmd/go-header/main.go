@@ -18,13 +18,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"os"
-
-	"log"
 
 	goheader "github.com/denis-tingaikin/go-header"
-	"github.com/denis-tingaikin/go-header/version"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
@@ -33,20 +28,9 @@ var defaultConfigPath = ".go-header.yml"
 var flagSet flag.FlagSet
 
 func main() {
-	paths := os.Args[1:]
-	if len(paths) == 0 {
-		log.Fatal("Paths has not passed")
-	}
-	if len(paths) == 1 {
-		if paths[0] == "version" {
-			fmt.Println(version.Value())
-			return
-		}
-	}
-
 	var configPath string
-	flagSet.StringVar(&configPath, "config", defaultConfigPath, "Path to config file")
-	var analyser = goheader.NewAnalyzerFromConfig(&configPath)
+	flagSet.StringVar(&configPath, "config", defaultConfigPath, "path to config file")
+	var analyser = goheader.NewAnalyzerFromConfigPath(&configPath)
 	analyser.Flags = flagSet
 
 	singlechecker.Main(analyser)

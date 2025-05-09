@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Denis Tingaikin
+// Copyright (c) 2020-2025 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -18,7 +18,6 @@ package goheader
 
 import (
 	"go/ast"
-	"go/token"
 	"runtime"
 	"strings"
 	"sync"
@@ -27,13 +26,34 @@ import (
 )
 
 // NewAnalyzer creates new analyzer based on template and goheader values
-func NewAnalyzer(templ string, vars map[string]Value) *analysis.Analyzer {
-	var goheader = New(WithTemplate(templ), WithValues(vars))
+func NewAnalyzer(c *Config) *analysis.Analyzer {
+	var initOncer sync.Once
+	var initErr error
+	var goheader *Analyzer
 	return &analysis.Analyzer{
 		Doc:  "the_only_doc",
 		URL:  "https://github.com/denis-tingaikin/go-header",
 		Name: "goheader",
 		Run: func(p *analysis.Pass) (any, error) {
+			initOncer.Do(func() {
+				var templ string
+				var vals map[string]Value
+
+				templ, initErr = c.GetTemplate()
+				if initErr != nil {
+					return
+				}
+
+				vals, initErr = c.GetValues()
+				if initErr != nil {
+					return
+				}
+				goheader = New(WithTemplate(templ), WithValues(vals))
+			})
+			if initErr != nil {
+				return nil, initErr
+			}
+
 			var wg sync.WaitGroup
 
 			var jobCh = make(chan *ast.File, len(p.Files))
@@ -55,61 +75,27 @@ func NewAnalyzer(templ string, vars map[string]Value) *analysis.Analyzer {
 							continue
 						}
 
-						issue := goheader.Analyze(&Target{
+						res := goheader.Analyze(&Target{
 							File: file,
 							Path: filename,
 						})
 
-						if issue == nil {
-							continue
-						}
-						f := p.Fset.File(file.Pos())
-
-						commentLine := 1
-						var offset int
-
-						// Inspired by https://github.com/denis-tingaikin/go-header/blob/4c75a6a2332f025705325d6c71fff4616aedf48f/analyzer.go#L85-L92
-						if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
-							if !strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
-								// When the comment is "//" there is a one character offset.
-								offset = 1
-							}
-							commentLine = p.Fset.PositionFor(file.Comments[0].Pos(), true).Line
-						}
-
-						// Skip issues related to build directives.
-						// https://github.com/denis-tingaikin/go-header/issues/18
-						if issue.Location().Position-offset < 0 {
+						if res.Err == nil {
 							continue
 						}
 
 						diag := analysis.Diagnostic{
-							Pos:     f.LineStart(issue.Location().Line+1) + token.Pos(issue.Location().Position-offset), // The position of the first divergence.
-							Message: issue.Message(),
+							Pos:     0,
+							Message: filename + ":" + res.Err.Error(),
 						}
 
-						if fix := issue.Fix(); fix != nil {
-							current := len(fix.Actual)
-							for _, s := range fix.Actual {
-								current += len(s)
-							}
-
-							start := f.LineStart(commentLine)
-
-							end := start + token.Pos(current)
-
-							header := strings.Join(fix.Expected, "\n") + "\n"
-
-							// Adds an extra line between the package and the header.
-							if end == file.Package {
-								header += "\n"
-							}
+						if res.Fix != "" {
 
 							diag.SuggestedFixes = []analysis.SuggestedFix{{
 								TextEdits: []analysis.TextEdit{{
-									Pos:     start,
-									End:     end,
-									NewText: []byte(header),
+									Pos:     file.FileStart,
+									End:     file.Package - 2,
+									NewText: []byte(res.Fix),
 								}},
 							}}
 						}
@@ -125,8 +111,8 @@ func NewAnalyzer(templ string, vars map[string]Value) *analysis.Analyzer {
 	}
 }
 
-// NewAnalyzerFromConfig creates a new analysis.Analyzer from goheader config file
-func NewAnalyzerFromConfig(config *string) *analysis.Analyzer {
+// NewAnalyzerFromConfigPath creates a new analysis.Analyzer from goheader config file
+func NewAnalyzerFromConfigPath(config *string) *analysis.Analyzer {
 	var goheaderOncer sync.Once
 	var goheader *analysis.Analyzer
 
@@ -141,15 +127,7 @@ func NewAnalyzerFromConfig(config *string) *analysis.Analyzer {
 				if err = cfg.Parse(*config); err != nil {
 					return
 				}
-				templ, err := cfg.GetTemplate()
-				if err != nil {
-					return
-				}
-				vars, err := cfg.GetValues()
-				if err != nil {
-					return
-				}
-				goheader = NewAnalyzer(templ, vars)
+				goheader = NewAnalyzer(&cfg)
 			})
 
 			if err != nil {

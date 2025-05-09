@@ -26,6 +26,40 @@ For installation you can simply use `go install`.
 ```bash
 go install github.com/denis-tingaikin/go-header/cmd/go-header@latest
 ```
+## Usage
+
+```bash
+  -V    print version and exit
+  -all
+        no effect (deprecated)
+  -c int
+        display offending line with this many lines of context (default -1)
+  -config string
+        path to config file (default ".go-header.yml")
+  -cpuprofile string
+        write CPU profile to this file
+  -debug string
+        debug flags, any subset of "fpstv"
+  -diff
+        with -fix, don't update the files, but print a unified diff
+  -fix
+        apply all suggested fixes
+  -flags
+        print analyzer flags in JSON
+  -json
+        emit JSON output
+  -memprofile string
+        write memory profile to this file
+  -source
+        no effect (deprecated)
+  -tags string
+        no effect (deprecated)
+  -test
+        indicates whether test files should be analyzed, too (default true)
+  -trace string
+        write trace log to this file
+  -v    no effect (deprecated)
+```
 ## Configuration
 
 To configuring `.go-header.yml` linter you simply need to fill the next fields:
@@ -75,8 +109,8 @@ values:
 
 ## Bult-in values
 
-- **MOD-YEAR** - Returns the year when the file was modified.
-- **MOD-YEAR-RANGE** - Returns a year-range where the range starts from the  year when the file was modified.
+- **MOD_YEAR** - Returns the year when the file was modified.
+- **MOD_YEAR-RANGE** - Returns a year-range where the range starts from the  year when the file was modified.
 - **YEAR** - Expects current year. Example header value: `2020`.  Example of template using: `{{YEAR}}` or `{{year}}`.
 - **YEAR-RANGE** - Expects any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example of template using: `{{year-range}}` or `{{YEAR-RANGE}}`.
 
