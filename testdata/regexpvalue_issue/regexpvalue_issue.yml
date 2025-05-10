@@ -1,11 +1,11 @@
 template: |-
-  {{COPYRIGHT HOLDER}}TEXT
+  {{.COPYRIGHT_HOLDER}}TEXT
 
 values:
   const:
     'YEAR': '2020'
   regexp:
-    'COPYRIGHT HOLDER': |-
-      (A {{ YEAR }}
+    '.COPYRIGHT_HOLDER': |-
+      (A {{ .YEAR }}
       (.*)
       )+
