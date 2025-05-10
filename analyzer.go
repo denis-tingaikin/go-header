@@ -102,6 +102,10 @@ func (a *Analyzer) Analyze(t *Target) (result *Result) {
 	header := ""
 	result = new(Result)
 
+	if a.template == "" {
+		return result
+	}
+
 	var style CommentStyleType
 
 	var comments, list = a.skipCodeGen(file)

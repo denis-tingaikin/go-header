@@ -17,7 +17,6 @@
 package goheader
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -76,7 +75,7 @@ func (c *Config) GetTemplate() (string, error) {
 		return c.Template, nil
 	}
 	if c.TemplatePath == "" {
-		return "", errors.New("template has not passed")
+		return "", nil
 	}
 	if b, err := os.ReadFile(c.TemplatePath); err != nil {
 		return "", err

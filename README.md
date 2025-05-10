@@ -1,7 +1,7 @@
 # go-header
 [![ci](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml)
 
-Go source code linter providing checks for license headers. 
+Simple go source code linter providing checks for copyrgiht headers. 
 
 ## Features
 
@@ -9,13 +9,13 @@ Go source code linter providing checks for license headers.
 |-----------------------------|--------|------------------------------------------|
 | ✅ **Copyright Headers**     | ✔️     | Supports all standard formats            |
 | ✅ **Parallel Processing**   | ✔️     | Processes files concurrently             |
-| ✅ **Comment Support**       | ✔️     | `//`, `/* */`, `/* * */`|
+| ✅ **Comment Support**       | ✔️     | `//`, `/* */`, `/* * */`                 |
 | ✅ **Go/Analysis**           | ✔️     | Native Go tooling integration            |
 | ✅ **Regex Customization**   | ✔️     | User-defined pattern matching            |
 | ✅ **Automatic Year Checks** | ✔️     | Validates & updates copyright years      |
 | ✅ **Auto-Fix Files**        | ✔️     | In-place header corrections              |
-| ⏳ **Go/Template Support**   | ❌     | *In development*                         |
-| ⏳ **Multi-License Support** | ❌     | *Planned*                                |
+| ✅ **Go/Template Support**   | ✔️     | *In development*                         |
+| ⏳ **Multi-License Support** | ❌     | Does any one need this? 🤔                |
 
 
 
@@ -61,29 +61,6 @@ go install github.com/denis-tingaikin/go-header/cmd/go-header@latest
   -v    no effect (deprecated)
 ```
 ## Configuration
-
-To configuring `.go-header.yml` linter you simply need to fill the next fields:
-
-
-Inline template:
-```yaml
----
-template: # expects header template string.
-vars: # expects valid key value paris where key is string, value is regexp.
-  key1: value1 # const value just checks equality. Note `key1` should be used in template string as {{ .key1 }} or {{ .KEY1 }}.
-  key2: value2(.*) # regexp value just checks regex match. The value should be a valid regexp pattern. Note `key2` should be used in template string as {{ .key2 }} or {{ .KEY2 }}.
-```
-Filebased template:
-```yaml
----
-template-path: # expects header template path string.
-vars: # expects `const` or `regexp` node with values where values is a map string to string.
-  key1: value1 # const value just checks equality. Note `key1` should be used in template string as {{ key1 }} or {{ KEY1 }}.
-  key2: value2(.*) # regexp value just checks regex match. The value should be a valid regexp pattern. Note `key2` should be used in template string as {{ key2 }} or {{ KEY2 }}.
-```
-
-## Configuration (DEPRECATED)
-
 To configuring `.go-header.yml` linter you simply need to fill the next fields:
 
 ```yaml

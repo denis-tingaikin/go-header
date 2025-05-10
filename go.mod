@@ -1,6 +1,6 @@
 module github.com/denis-tingaikin/go-header
 
-go 1.24
+go 1.23.0
 
 require (
 	github.com/stretchr/testify v1.7.0
