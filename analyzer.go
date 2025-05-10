@@ -218,7 +218,6 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 
 	for k, v := range a.values {
 		res[k] = v
-		fmt.Println(k, v)
 	}
 
 	res["MOD_YEAR"] = a.values["YEAR"]
