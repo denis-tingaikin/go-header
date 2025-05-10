@@ -1,7 +1,7 @@
 # go-header
 [![ci](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/denis-tingaikin/go-header/actions/workflows/ci.yml)
 
-Simple go source code linter providing checks for copyrgiht headers. 
+Simple go source code linter providing checks for copyright headers. 
 
 ## Features
 
