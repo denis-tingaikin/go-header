@@ -61,7 +61,8 @@ func (c *Config) GetValues() (map[string]Value, error) {
 	}
 	appendValues := func(m map[string]string, create func(string) Value) {
 		for k, v := range m {
-			result[k] = create(v)
+			result[strings.ToLower(k)] = create(v)
+			result[strings.ToUpper(k)] = create(v)
 		}
 	}
 	appendValues(c.Values["const"], createConst)

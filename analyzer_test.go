@@ -44,6 +44,7 @@ func header(t *testing.T, header string) *goheader.Target {
 					},
 				},
 			},
+
 			Package: token.Pos(len(header)),
 		},
 		Path: t.TempDir(),
@@ -88,6 +89,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			assert:   assert.Nil,
 		},
 		{
+			desc:     "missed header ",
+			filename: "noheader/noheader.go",
+			config:   "noheader/noheader.yml",
+			assert:   assert.NotNil,
+		},
+		{
 			desc:     "headercomment",
 			filename: "headercomment/headercomment.go",
 			config:   "headercomment/headercomment.yml",
@@ -98,6 +105,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			filename: "readme/readme.go",
 			config:   "readme/readme.yml",
 			assert:   assert.Nil,
+		},
+		{
+			desc:     "cgo",
+			filename: "cgo/cgo.go",
+			config:   "cgo/cgo.yml",
+			assert:   assert.NotNil,
 		},
 		{
 			desc:     "star-block like header",
@@ -153,54 +166,62 @@ func TestAnalyzer_Analyze_fix(t *testing.T) {
 // SPDX-License-Identifier: Foo`,
 			},
 		},
-		// 		{
-		// 			desc:     "Block comment 1",
-		// 			filename: "fix/blockcomment1.go",
-		// 			config:   "fix/fix.yml",
-		// 			expected: goheader.Result{
-		// 				Fix: `/* mycompany.com
-		// SPDX-License-Identifier: Foo */`,
-		// 			},
-		// 		},
-		// 		{
-		// 			desc:     "Block comment 2",
-		// 			filename: "fix/blockcomment2.go",
-		// 			config:   "fix/fix.yml",
+		{
+			desc:     "Block comment 1",
+			filename: "fix/blockcomment1.go",
+			config:   "fix/fix.yml",
+			expected: goheader.Result{
+				Fix: `/*
+mycompany.com
+SPDX-License-Identifier: Foo
+*/`,
+			},
+		},
+		{
+			desc:     "Block comment 2",
+			filename: "fix/blockcomment2.go",
+			config:   "fix/fix.yml",
 
-		// 			expected: goheader.Result{
-		// 				Fix: `/* mycompany.com
-		// SPDX-License-Identifier: Foo */`,
-		// 			},
-		// 		},
-		// 		{
-		// 			desc:     "Block comment 3",
-		// 			filename: "fix/blockcomment3.go",
-		// 			config:   "fix/fix.yml",
-		// 			expected: goheader.Result{
-		// 				Fix: `/* mycompany.com
-		// SPDX-License-Identifier: Foo */`,
-		// 			},
-		// 		},
-		// 		{
-		// 			desc:     "Block comment 4",
-		// 			filename: "fix/blockcomment4.go",
-		// 			config:   "fix/fix.yml",
-		// 			expected: goheader.Result{
-		// 				Fix: `/* mycompany.com
-		// SPDX-License-Identifier: Foo */`,
-		// 			},
-		// 		},
-		// 		{
-		// 			desc:     "Star block comment",
-		// 			filename: "fix/blockcomment5.go",
-		// 			config:   "fix/fix.yml",
-		// 			expected: goheader.Result{
-		// 				Fix: `/*
-		//  * mycompany.com
-		//  * SPDX-License-Identifier: Foo
-		//  */`,
-		// 			},
-		// 		},
+			expected: goheader.Result{
+				Fix: `/*
+mycompany.com
+SPDX-License-Identifier: Foo
+*/`,
+			},
+		},
+		{
+			desc:     "Block comment 3",
+			filename: "fix/blockcomment3.go",
+			config:   "fix/fix.yml",
+			expected: goheader.Result{
+				Fix: `/*
+mycompany.com
+SPDX-License-Identifier: Foo
+*/`,
+			},
+		},
+		{
+			desc:     "Block comment 4",
+			filename: "fix/blockcomment4.go",
+			config:   "fix/fix.yml",
+			expected: goheader.Result{
+				Fix: `/*
+mycompany.com
+SPDX-License-Identifier: Foo
+*/`,
+			},
+		},
+		{
+			desc:     "Star block comment",
+			filename: "fix/blockcomment5.go",
+			config:   "fix/fix.yml",
+			expected: goheader.Result{
+				Fix: `/*
+ * mycompany.com
+ * SPDX-License-Identifier: Foo
+ */`,
+			},
+		},
 	}
 
 	for _, test := range testCases {

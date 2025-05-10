@@ -30,10 +30,12 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 	var initOncer sync.Once
 	var initErr error
 	var goheader *Analyzer
+
 	return &analysis.Analyzer{
-		Doc:  "the_only_doc",
-		URL:  "https://github.com/denis-tingaikin/go-header",
-		Name: "goheader",
+		Doc:              "the_only_doc",
+		URL:              "https://github.com/denis-tingaikin/go-header",
+		Name:             "goheader",
+		RunDespiteErrors: true,
 		Run: func(p *analysis.Pass) (any, error) {
 			initOncer.Do(func() {
 				var templ string
@@ -48,7 +50,9 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 				if initErr != nil {
 					return
 				}
+
 				goheader = New(WithTemplate(templ), WithValues(vals))
+
 			})
 			if initErr != nil {
 				return nil, initErr
@@ -58,7 +62,8 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 
 			var jobCh = make(chan *ast.File, len(p.Files))
 
-			for _, file := range p.Files {
+			for _, f := range p.Files {
+				file := f
 				jobCh <- file
 			}
 			close(jobCh)
@@ -69,7 +74,6 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 					defer wg.Done()
 
 					for file := range jobCh {
-
 						filename := p.Fset.Position(file.Pos()).Filename
 						if !strings.HasSuffix(filename, ".go") {
 							continue
@@ -83,23 +87,31 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 						if res.Err == nil {
 							continue
 						}
+						var line = 1
+						if hasCGOImport(file) {
+							line = 4
+						}
+
+						var start = p.Fset.File(file.FileStart).LineStart(line)
+						var end = res.End - res.Start + start
+						var endLine = p.Fset.File(file.FileStart).Line(end) + 1
+						end = p.Fset.File(file.FileStart).LineStart(endLine)
 
 						diag := analysis.Diagnostic{
-							Pos:     0,
-							Message: filename + ":" + res.Err.Error(),
+							Pos:     start,
+							End:     end,
+							Message: res.Err.Error(),
 						}
 
 						if res.Fix != "" {
-
 							diag.SuggestedFixes = []analysis.SuggestedFix{{
 								TextEdits: []analysis.TextEdit{{
-									Pos:     file.FileStart,
-									End:     file.Package - 2,
-									NewText: []byte(res.Fix),
+									Pos:     start,
+									End:     end,
+									NewText: []byte(res.Fix + "\n"),
 								}},
 							}}
 						}
-
 						p.Report(diag)
 					}
 				}()
@@ -110,6 +122,18 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 		},
 	}
 }
+func hasCGOImport(file *ast.File) bool {
+	var unsafeCount int
+	for _, imp := range file.Imports {
+		if imp.Path.Value == `"C"` {
+			return true
+		}
+		if imp.Path.Value == `"unsafe"` {
+			unsafeCount++
+		}
+	}
+	return unsafeCount > 1
+}
 
 // NewAnalyzerFromConfigPath creates a new analysis.Analyzer from goheader config file
 func NewAnalyzerFromConfigPath(config *string) *analysis.Analyzer {
@@ -117,9 +141,10 @@ func NewAnalyzerFromConfigPath(config *string) *analysis.Analyzer {
 	var goheader *analysis.Analyzer
 
 	return &analysis.Analyzer{
-		Doc:  "the_only_doc",
-		URL:  "https://github.com/denis-tingaikin/go-header",
-		Name: "goheader",
+		Doc:              "the_only_doc",
+		URL:              "https://github.com/denis-tingaikin/go-header",
+		Name:             "goheader",
+		RunDespiteErrors: true,
 		Run: func(p *analysis.Pass) (any, error) {
 			var err error
 			goheaderOncer.Do(func() {

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"os"
 	"os/exec"
 	"regexp"
@@ -73,19 +74,45 @@ func New(opts ...Option) *Analyzer {
 }
 
 type Result struct {
-	Err error
-	Fix string
+	Err        error
+	Fix        string
+	End, Start token.Pos
 }
 
-func (a *Analyzer) Analyze(t *Target) *Result {
+func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comment) {
+	var comments = file.Comments
+	var list []*ast.Comment
+	if len(comments) > 0 {
+		list = comments[0].List
+	}
+	// for len(comments) > 0 && strings.Contains(comments[0].Text(), "DO NOT EDIT") {
+	// 	comments = comments[1:]
+	// 	if len(comments) > 0 {
+	// 		list = comments[0].List
+	// 		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
+	// 			list = list[1:]
+	// 		}
+	// 	}
+	// }
+	return comments, list
+}
+
+func (a *Analyzer) Analyze(t *Target) (result *Result) {
 	file := t.File
 	header := ""
+	result = new(Result)
 
 	var style CommentStyleType
 
-	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
-		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
-			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
+	var comments, list = a.skipCodeGen(file)
+
+	if len(comments) > 0 && comments[0].Pos() < file.Package {
+		if strings.HasPrefix(list[0].Text, "/*") {
+
+			result.Start = list[0].Pos()
+			result.End = list[0].End()
+
+			header = (&ast.CommentGroup{List: []*ast.Comment{list[0]}}).Text()
 			style = MultiLine
 
 			if handledHeader, ok := handleStarBlock(header); ok {
@@ -95,14 +122,23 @@ func (a *Analyzer) Analyze(t *Target) *Result {
 
 		} else {
 			style = DoubleSlash
-			header = file.Comments[0].Text()
+			header = comments[0].Text()
+			result.Start = comments[0].Pos()
+			result.End = comments[0].Pos()
 		}
 	}
 	header = strings.TrimSpace(header)
 
 	vars, err := a.getPerTargetValues(t)
 	if err != nil {
-		return &Result{Err: err}
+		result.Err = err
+		return result
+	}
+
+	if header == "" {
+		result.Err = errors.New("missed copyright header")
+		result.Fix = a.generateFix(style, vars)
+		return result
 	}
 
 	templateRaw := quoteMeta(a.template)
@@ -112,27 +148,28 @@ func (a *Analyzer) Analyze(t *Target) *Result {
 		return &Result{Err: err}
 	}
 
-	res := new(bytes.Buffer)
+	headerTemplateBuffer := new(bytes.Buffer)
 
-	if err := template.Execute(res, vars); err != nil {
+	if err := template.Execute(headerTemplateBuffer, vars); err != nil {
 		return &Result{Err: err}
 	}
 
-	headerTemplate := res.String()
+	headerTemplate := headerTemplateBuffer.String()
 
 	r, err := regexp.Compile(headerTemplate)
 
 	if err != nil {
-		return &Result{Err: err}
+		result.Err = err
+		return result
 	}
 
 	if !r.MatchString(header) {
-		// log.Println(header)
-		// log.Println("template " + headerTemplate)
-		return &Result{Err: errors.New("template doens't match"), Fix: a.generateFix(style, vars)}
+		result.Err = errors.New("template doesn't match")
+		result.Fix = a.generateFix(style, vars)
+		return result
 	}
 
-	return &Result{}
+	return result
 }
 
 func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) string {
@@ -152,9 +189,6 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) st
 	_ = fixTemplate.Execute(fixOut, vals)
 	res := fixOut.String()
 	resSplit := strings.Split(res, "\n")
-	if style == MultiLine {
-		resSplit[0] = "/* " + resSplit[0]
-	}
 
 	for i := range resSplit {
 		switch style {
@@ -168,11 +202,12 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) st
 	}
 
 	switch style {
-	case MultiLine:
-		resSplit[len(resSplit)-1] = resSplit[len(resSplit)-1] + " */"
 	case MultiLineStar:
 		resSplit = append([]string{"/*"}, resSplit...)
 		resSplit = append(resSplit, " */")
+	case MultiLine:
+		resSplit = append([]string{"/*"}, resSplit...)
+		resSplit = append(resSplit, "*/")
 	}
 
 	return strings.Join(resSplit, "\n")
@@ -183,6 +218,7 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 
 	for k, v := range a.values {
 		res[k] = v
+		fmt.Println(k, v)
 	}
 
 	res["MOD_YEAR"] = a.values["YEAR"]
@@ -201,7 +237,7 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 	return res, nil
 }
 
-// TODO: Fix vibe conding
+// TODO: Do not vibe code
 func quoteMeta(text string) string {
 	var result strings.Builder
 	i := 0
@@ -233,15 +269,6 @@ func quoteMeta(text string) string {
 	}
 
 	return result.String()
-}
-
-func isNewLineRequired(group *ast.CommentGroup) bool {
-	if len(group.List) < 2 {
-		return false
-	}
-	end := group.List[0].End()
-	pos := group.List[1].Pos()
-	return end+1 >= pos && group.List[0].Text[len(group.List[0].Text)-1] != '\n'
 }
 
 func handleStarBlock(header string) (string, bool) {
