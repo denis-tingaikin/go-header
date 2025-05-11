@@ -32,22 +32,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func header(t *testing.T, header string) *goheader.Target {
-	return &goheader.Target{
-		File: &ast.File{
-			Comments: []*ast.CommentGroup{
-				{
-					List: []*ast.Comment{
-						{
-							Text: header,
-						},
+func header(t *testing.T, header string) (path string, file *ast.File) {
+	return t.TempDir(), &ast.File{
+		Comments: []*ast.CommentGroup{
+			{
+				List: []*ast.Comment{
+					{
+						Text: header,
 					},
 				},
 			},
-
-			Package: token.Pos(len(header)),
 		},
-		Path: t.TempDir(),
+
+		Package: token.Pos(len(header)),
 	}
 }
 
@@ -62,73 +59,73 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			desc:     "const value",
 			filename: "constvalue/constvalue.go",
 			config:   "constvalue/constvalue.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "const value 2",
 			filename: "constvalue2/constvalue.go",
 			config:   "constvalue2/constvalue.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "regexp value",
 			filename: "regexpvalue/regexpvalue.go",
 			config:   "regexpvalue/regexpvalue.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "regexp value with issue",
 			filename: "regexpvalue_issue/regexpvalue_issue.go",
 			config:   "regexpvalue_issue/regexpvalue_issue.yml",
-			assert:   assert.NotNil,
+			assert:   assert.NotEmpty,
 		},
 		{
 			desc:     "golangci-linter sample",
 			filename: "golangci-linter/sample.go",
 			config:   "golangci-linter/sample.yml",
-			assert:   assert.NotNil,
+			assert:   assert.NotEmpty,
 		},
 		{
 			desc:     "nested values",
 			filename: "nestedvalues/nestedvalues.go",
 			config:   "nestedvalues/nestedvalues.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "missed header ",
 			filename: "noheader/noheader.go",
 			config:   "noheader/noheader.yml",
-			assert:   assert.NotNil,
+			assert:   assert.NotEmpty,
 		},
 		{
 			desc:     "headercomment",
 			filename: "headercomment/headercomment.go",
 			config:   "headercomment/headercomment.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "readme",
 			filename: "readme/readme.go",
 			config:   "readme/readme.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "cgo",
 			filename: "cgo/cgo.go",
 			config:   "cgo/cgo.yml",
-			assert:   assert.NotNil,
+			assert:   assert.NotEmpty,
 		},
 		{
 			desc:     "star-block like header",
 			filename: "starcomment/starcomment.go",
 			config:   "starcomment/starcomment.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 		{
 			desc:     "checks old config compatibility",
 			filename: "oldconfig/oldconfig.go",
 			config:   "oldconfig/oldconfig.yml",
-			assert:   assert.Nil,
+			assert:   assert.Empty,
 		},
 	}
 
@@ -148,6 +145,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			a := goheader.New(
 				goheader.WithValues(values),
 				goheader.WithTemplate(tmpl),
+				goheader.WithDelims(cfg.GetDelims()),
 			)
 
 			filename := filepath.Join("testdata", test.filename)
@@ -155,9 +153,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ParseComments)
 			require.NoError(t, err)
 
-			issue := a.Analyze(&goheader.Target{Path: filename, File: file})
+			issue := a.Analyze(filename, file)
 
-			test.assert(t, issue.Err)
+			test.assert(t, issue.Message)
 		})
 	}
 }
@@ -175,7 +173,8 @@ func TestAnalyzer_Analyze_fix(t *testing.T) {
 			config:   "fix/fix.yml",
 			expected: goheader.Result{
 				Fix: `// mycompany.com
-// SPDX-License-Identifier: Foo`,
+// SPDX-License-Identifier: Foo
+`,
 			},
 		},
 		{
@@ -186,7 +185,8 @@ func TestAnalyzer_Analyze_fix(t *testing.T) {
 				Fix: `/*
 mycompany.com
 SPDX-License-Identifier: Foo
-*/`,
+*/
+`,
 			},
 		},
 		{
@@ -198,7 +198,8 @@ SPDX-License-Identifier: Foo
 				Fix: `/*
 mycompany.com
 SPDX-License-Identifier: Foo
-*/`,
+*/
+`,
 			},
 		},
 		{
@@ -209,7 +210,8 @@ SPDX-License-Identifier: Foo
 				Fix: `/*
 mycompany.com
 SPDX-License-Identifier: Foo
-*/`,
+*/
+`,
 			},
 		},
 		{
@@ -220,7 +222,8 @@ SPDX-License-Identifier: Foo
 				Fix: `/*
 mycompany.com
 SPDX-License-Identifier: Foo
-*/`,
+*/
+`,
 			},
 		},
 		{
@@ -231,7 +234,8 @@ SPDX-License-Identifier: Foo
 				Fix: `/*
  * mycompany.com
  * SPDX-License-Identifier: Foo
- */`,
+ */
+`,
 			},
 		},
 	}
@@ -259,9 +263,15 @@ SPDX-License-Identifier: Foo
 			file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ParseComments)
 			require.NoError(t, err)
 
-			actual := a.Analyze(&goheader.Target{Path: filename, File: file})
+			actual := a.Analyze(filename, file)
 
-			assert.Equal(t, test.expected.Fix, actual.Fix)
+			actualFix := ""
+
+			if len(actual.SuggestedFixes) > 0 && len(actual.SuggestedFixes[0].TextEdits) > 0 {
+				actualFix = string(actual.SuggestedFixes[0].TextEdits[0].NewText)
+			}
+
+			assert.Equal(t, test.expected.Fix, actualFix)
 		})
 	}
 }
@@ -276,7 +286,7 @@ func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 	}
 
 	var a = goheader.New(goheader.WithTemplate("A {{ .MY_VAL }}"), goheader.WithValues(vals))
-	require.Nil(t, a.Analyze(header(t, fmt.Sprintf("A 2000-%v B", time.Now().Year()))).Err)
+	require.Empty(t, a.Analyze(header(t, fmt.Sprintf("A 2000-%v B", time.Now().Year()))).Message)
 }
 
 func TestAnalyzer_UnicodeHeaders(t *testing.T) {
@@ -284,7 +294,7 @@ func TestAnalyzer_UnicodeHeaders(t *testing.T) {
 		goheader.WithTemplate("😊早安😊"),
 	)
 	issue := a.Analyze(header(t, `😊早安😊`))
-	require.Nil(t, issue.Err)
+	require.Empty(t, issue.Message)
 }
 
 func TestAnalyzer_Analyze1(t *testing.T) {
@@ -297,7 +307,7 @@ func TestAnalyzer_Analyze1(t *testing.T) {
 		}))
 	issue := a.Analyze(header(t, `A 2020
 B`))
-	require.Nil(t, issue.Err)
+	require.Empty(t, issue.Message)
 }
 
 func TestAnalyzer_Analyze2(t *testing.T) {
@@ -317,7 +327,7 @@ A 2020
 B
 TEXT
 `))
-	require.Nil(t, issue.Err)
+	require.Empty(t, issue.Message)
 }
 
 func TestAnalyzer_Analyze3(t *testing.T) {
@@ -337,7 +347,7 @@ A 2021
 B
 TEXT
 `))
-	require.NotNil(t, issue.Err)
+	require.NotEmpty(t, issue.Message)
 }
 
 func TestAnalyzer_Analyze4(t *testing.T) {
@@ -361,7 +371,7 @@ func TestAnalyzer_Analyze4(t *testing.T) {
 			},
 		}))
 	issue := a.Analyze(header(t, `abcdefg`))
-	require.Nil(t, issue.Err)
+	require.Empty(t, issue.Message)
 }
 
 func TestAnalyzer_Analyze5(t *testing.T) {
@@ -375,7 +385,7 @@ func TestAnalyzer_Analyze5(t *testing.T) {
 	s := token.NewFileSet()
 	f, err := parser.ParseFile(s, p, nil, parser.ParseComments)
 	require.Nil(t, err)
-	require.Nil(t, a.Analyze(&goheader.Target{File: f, Path: p}).Err)
+	require.Empty(t, a.Analyze(p, f).Message)
 }
 
 func TestAnalyzer_Analyze6(t *testing.T) {
@@ -390,7 +400,7 @@ func TestAnalyzer_Analyze6(t *testing.T) {
 	s := token.NewFileSet()
 	f, err := parser.ParseFile(s, p, nil, parser.ParseComments)
 	require.Nil(t, err)
-	require.Nil(t, a.Analyze(&goheader.Target{File: f, Path: p}).Err)
+	require.Empty(t, a.Analyze(p, f).Message)
 }
 
 func TestREADME(t *testing.T) {
@@ -428,5 +438,5 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.`))
-	require.Nil(t, issue.Err)
+	require.Empty(t, issue.Message)
 }

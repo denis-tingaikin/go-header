@@ -38,17 +38,17 @@ type Config struct {
 	TemplatePath string `yaml:"template-path"`
 	// Vars is map of values. Values can be used recursively.
 	Vars map[string]string `yaml:"vars"`
-	// ValuesMarker represents a string of marker for values. Default is "{{}}"
-	ValuesMarker string `yaml:"values-marker"`
-	// Parallel means a number of goroutines to proccess files.
+	// Delims represents a string marker for values. The default is "{{}}".
+	Delims string `yaml:"delims"`
+	// Parallel means a number of goroutines to proccess files. Default runtime.NumCPU()
 	Parallel int `yaml:"parallel"`
 }
 
-func (c *Config) GetValuesMarker() string {
-	if c.ValuesMarker == "" {
+func (c *Config) GetDelims() string {
+	if c.Delims == "" {
 		return "{{}}"
 	}
-	return c.ValuesMarker
+	return c.Delims
 }
 
 func (c *Config) GetParallel() int {
@@ -97,7 +97,7 @@ func (c *Config) GetTemplate() (string, error) {
 		return tmpl, err
 	}
 
-	return convertPlaceholders(tmpl, c.GetValuesMarker()), nil
+	return migrageOldConfig(tmpl, c.GetDelims()), nil
 }
 
 func (c *Config) getTemplate() (string, error) {
@@ -123,12 +123,12 @@ func (c *Config) Parse(p string) error {
 	return yaml.Unmarshal(b, c)
 }
 
-func convertPlaceholders(input, marker string) string {
-	var left = marker[:len(marker)/2]
-	var right = marker[len(marker)/2:]
+func migrageOldConfig(input string, delims string) string {
+	var left = delims[:len(delims)/2]
+	var right = delims[len(delims)/2:]
 
 	// Regular expression to find all {{...}} patterns
-	re := regexp.MustCompile(regexp.QuoteMeta(left) + `\s*([^` + right[:1] + `]+)\s*` + regexp.QuoteMeta(right))
+	re := regexp.MustCompile(regexp.QuoteMeta("{{") + `\s*([^}]+)\s*` + regexp.QuoteMeta("}}"))
 
 	// Replace each match with the converted version
 	result := re.ReplaceAllStringFunc(input, func(match string) string {
@@ -137,14 +137,14 @@ func convertPlaceholders(input, marker string) string {
 		inner = strings.TrimSpace(inner)
 
 		if strings.HasPrefix(inner, ".") {
-			return "{{ " + inner + " }}"
+			return fmt.Sprintf("%v %v %v", left, inner, right)
 		}
 
 		// Replace spaces with underscores
 		convertedInner := strings.ReplaceAll(inner, " ", "_")
 
 		// Add the dot prefix
-		return "{{ ." + convertedInner + " }}"
+		return fmt.Sprintf("%v .%v %v", left, convertedInner, right)
 	})
 
 	return result

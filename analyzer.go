@@ -18,7 +18,6 @@ package goheader
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -28,6 +27,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"golang.org/x/tools/go/analysis"
 )
 
 type CommentStyleType int
@@ -38,22 +39,17 @@ const (
 	MultiLineStar
 )
 
-type Target struct {
-	Path string
-	File *ast.File
-}
-
 const iso = "2006-01-02 15:04:05 -0700"
 
-func (t *Target) ModTime() (time.Time, error) {
-	diff, err := exec.Command("git", "diff", t.Path).CombinedOutput()
+func modTime(path string) (time.Time, error) {
+	diff, err := exec.Command("git", "diff", path).CombinedOutput()
 	if err == nil && len(diff) == 0 {
-		line, err := exec.Command("git", "log", "-1", "--pretty=format:%cd", "--date=iso", "--", t.Path).CombinedOutput()
+		line, err := exec.Command("git", "log", "-1", "--pretty=format:%cd", "--date=iso", "--", path).CombinedOutput()
 		if err == nil {
 			return time.Parse(iso, string(line))
 		}
 	}
-	info, err := os.Stat(t.Path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -61,12 +57,15 @@ func (t *Target) ModTime() (time.Time, error) {
 }
 
 type Analyzer struct {
-	values   map[string]Value
-	template string
+	values                            map[string]Value
+	template, delimsLeft, delimsRight string
 }
 
 func New(opts ...Option) *Analyzer {
-	var a Analyzer
+	var a = Analyzer{
+		delimsLeft:  "{{",
+		delimsRight: "}}",
+	}
 	for _, opt := range opts {
 		opt.apply(&a)
 	}
@@ -85,22 +84,19 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	if len(comments) > 0 {
 		list = comments[0].List
 	}
-	// for len(comments) > 0 && strings.Contains(comments[0].Text(), "DO NOT EDIT") {
-	// 	comments = comments[1:]
-	// 	if len(comments) > 0 {
-	// 		list = comments[0].List
-	// 		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
-	// 			list = list[1:]
-	// 		}
-	// 	}
-	// }
+	if len(comments) > 0 && strings.Contains(comments[0].Text(), "DO NOT EDIT") {
+		comments = comments[1:]
+		list = comments[0].List
+		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
+			list = list[1:]
+		}
+	}
+
 	return comments, list
 }
 
-func (a *Analyzer) Analyze(t *Target) (result *Result) {
-	file := t.File
+func (a *Analyzer) Analyze(path string, file *ast.File) (result analysis.Diagnostic) {
 	header := ""
-	result = new(Result)
 
 	if a.template == "" {
 		return result
@@ -113,7 +109,7 @@ func (a *Analyzer) Analyze(t *Target) (result *Result) {
 	if len(comments) > 0 && comments[0].Pos() < file.Package {
 		if strings.HasPrefix(list[0].Text, "/*") {
 
-			result.Start = list[0].Pos()
+			result.Pos = list[0].Pos()
 			result.End = list[0].End()
 
 			header = (&ast.CommentGroup{List: []*ast.Comment{list[0]}}).Text()
@@ -127,35 +123,43 @@ func (a *Analyzer) Analyze(t *Target) (result *Result) {
 		} else {
 			style = DoubleSlash
 			header = comments[0].Text()
-			result.Start = comments[0].Pos()
+			result.Pos = comments[0].Pos()
 			result.End = comments[0].Pos()
 		}
 	}
 	header = strings.TrimSpace(header)
 
-	vars, err := a.getPerTargetValues(t)
+	vars, err := a.getPerTargetValues(path, file)
 	if err != nil {
-		result.Err = err
+		result.Message = err.Error()
 		return result
 	}
 
 	if header == "" {
-		result.Err = errors.New("missed copyright header")
-		result.Fix = a.generateFix(style, vars)
+		result.Message = "missed copyright header"
+		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
+			TextEdits: []analysis.TextEdit{
+				{
+					NewText: []byte(a.generateFix(style, vars)),
+				},
+			},
+		})
 		return result
 	}
 
-	templateRaw := quoteMeta(a.template)
+	templateRaw := a.quoteMeta(a.template)
 
-	template, err := template.New("header").Parse(templateRaw)
+	template, err := template.New("header").Delims(a.delimsLeft, a.delimsRight).Parse(templateRaw)
 	if err != nil {
-		return &Result{Err: err}
+		result.Message = err.Error()
+		return result
 	}
 
 	headerTemplateBuffer := new(bytes.Buffer)
 
 	if err := template.Execute(headerTemplateBuffer, vars); err != nil {
-		return &Result{Err: err}
+		result.Message = err.Error()
+		return result
 	}
 
 	headerTemplate := headerTemplateBuffer.String()
@@ -163,13 +167,19 @@ func (a *Analyzer) Analyze(t *Target) (result *Result) {
 	r, err := regexp.Compile(headerTemplate)
 
 	if err != nil {
-		result.Err = err
+		result.Message = err.Error()
 		return result
 	}
 
 	if !r.MatchString(header) {
-		result.Err = errors.New("template doesn't match")
-		result.Fix = a.generateFix(style, vars)
+		result.Message = "template doesn't match"
+		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
+			TextEdits: []analysis.TextEdit{
+				{
+					NewText: []byte(a.generateFix(style, vars)),
+				},
+			},
+		})
 		return result
 	}
 
@@ -214,10 +224,10 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) st
 		resSplit = append(resSplit, "*/")
 	}
 
-	return strings.Join(resSplit, "\n")
+	return strings.Join(resSplit, "\n") + "\n"
 }
 
-func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) {
+func (a *Analyzer) getPerTargetValues(path string, file *ast.File) (map[string]Value, error) {
 	var res = make(map[string]Value)
 
 	for k, v := range a.values {
@@ -226,7 +236,7 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 
 	res["MOD_YEAR"] = a.values["YEAR"]
 	res["MOD_YEAR_RANGE"] = a.values["YEAR_RANGE"]
-	if t, err := target.ModTime(); err == nil {
+	if t, err := modTime(path); err == nil {
 		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
 		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{.MOD_YEAR}})|({{.MOD_YEAR}}))`}
 	}
@@ -241,17 +251,16 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 }
 
 // TODO: Do not vibe code
-func quoteMeta(text string) string {
+func (a *Analyzer) quoteMeta(text string) string {
 	var result strings.Builder
 	i := 0
 	n := len(text)
-
 	for i < n {
 		// Check for template placeholder start
-		if i+3 < n && text[i] == '{' && text[i+1] == '{' {
+		if i+3 < n && text[i] == a.delimsLeft[0] && text[i+1] == a.delimsLeft[1] {
 			// Find the end of the placeholder
 			end := i + 2
-			for end < n && !(text[end] == '}' && end+1 < n && text[end+1] == '}') {
+			for end < n && !(text[end] == a.delimsRight[0] && end+1 < n && text[end+1] == a.delimsRight[1]) {
 				end++
 			}
 			if end+1 < n {

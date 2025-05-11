@@ -35,6 +35,17 @@ func WithValues(values map[string]Value) Option {
 	})
 }
 
+// WithDelims replaces default delims for parsing.
+func WithDelims(delims string) Option {
+	return applyAnalyzerOptionFunc(func(a *Analyzer) {
+		var left = delims[:len(delims)/2]
+		var right = delims[len(delims)/2:]
+
+		a.delimsLeft = left
+		a.delimsRight = right
+	})
+}
+
 func WithTemplate(template string) Option {
 	return applyAnalyzerOptionFunc(func(a *Analyzer) {
 		a.template = template

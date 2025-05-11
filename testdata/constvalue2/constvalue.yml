@@ -1,7 +1,7 @@
 template: |-
   A [[ .YEAR ]]
   B
-values-marker: "[[]]"
+delims: "[[]]"
 vars:
-  'YEAR': '2020'
+  YEAR: 2020
 

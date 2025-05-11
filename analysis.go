@@ -18,7 +18,6 @@ package goheader
 
 import (
 	"go/ast"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -51,7 +50,7 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 					return
 				}
 
-				goheader = New(WithTemplate(templ), WithValues(vals))
+				goheader = New(WithTemplate(templ), WithValues(vals), WithDelims(c.GetDelims()))
 
 			})
 			if initErr != nil {
@@ -68,7 +67,7 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 			}
 			close(jobCh)
 
-			for range runtime.NumCPU() {
+			for range c.GetParallel() {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
@@ -79,40 +78,30 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 							continue
 						}
 
-						res := goheader.Analyze(&Target{
-							File: file,
-							Path: filename,
-						})
+						res := goheader.Analyze(filename, file)
 
-						if res.Err == nil {
+						if res.Message == "" {
 							continue
 						}
 						var line = 1
-						if hasCGOImport(file) {
+						if ast.IsGenerated(file) {
 							line = 4
 						}
 
-						var start = p.Fset.File(file.FileStart).LineStart(line)
-						var end = res.End - res.Start + start
-						var endLine = p.Fset.File(file.FileStart).Line(end) + 1
-						end = p.Fset.File(file.FileStart).LineStart(endLine)
+						var start = p.Fset.File(file.Pos()).LineStart(line)
+						var end = res.End - res.Pos + start
+						var endLine = p.Fset.File(file.Pos()).Line(end) + 1
+						end = p.Fset.File(file.Pos()).LineStart(endLine)
 
-						diag := analysis.Diagnostic{
-							Pos:     start,
-							End:     end,
-							Message: res.Err.Error(),
+						res.Pos = start
+						res.End = end
+
+						if len(res.SuggestedFixes) > 0 && len(res.SuggestedFixes[0].TextEdits) > 0 {
+							res.SuggestedFixes[0].TextEdits[0].Pos = start
+							res.SuggestedFixes[0].TextEdits[0].End = end
 						}
 
-						if res.Fix != "" {
-							diag.SuggestedFixes = []analysis.SuggestedFix{{
-								TextEdits: []analysis.TextEdit{{
-									Pos:     start,
-									End:     end,
-									NewText: []byte(res.Fix + "\n"),
-								}},
-							}}
-						}
-						p.Report(diag)
+						p.Report(res)
 					}
 				}()
 			}
@@ -121,18 +110,6 @@ func NewAnalyzer(c *Config) *analysis.Analyzer {
 			return nil, nil
 		},
 	}
-}
-func hasCGOImport(file *ast.File) bool {
-	var unsafeCount int
-	for _, imp := range file.Imports {
-		if imp.Path.Value == `"C"` {
-			return true
-		}
-		if imp.Path.Value == `"unsafe"` {
-			unsafeCount++
-		}
-	}
-	return unsafeCount > 1
 }
 
 // NewAnalyzerFromConfigPath creates a new analysis.Analyzer from goheader config file
