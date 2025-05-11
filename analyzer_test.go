@@ -65,6 +65,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			assert:   assert.Nil,
 		},
 		{
+			desc:     "const value 2",
+			filename: "constvalue2/constvalue.go",
+			config:   "constvalue2/constvalue.yml",
+			assert:   assert.Nil,
+		},
+		{
 			desc:     "regexp value",
 			filename: "regexpvalue/regexpvalue.go",
 			config:   "regexpvalue/regexpvalue.yml",
@@ -116,6 +122,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			desc:     "star-block like header",
 			filename: "starcomment/starcomment.go",
 			config:   "starcomment/starcomment.yml",
+			assert:   assert.Nil,
+		},
+		{
+			desc:     "checks old config compatibility",
+			filename: "oldconfig/oldconfig.go",
+			config:   "oldconfig/oldconfig.yml",
 			assert:   assert.Nil,
 		},
 	}

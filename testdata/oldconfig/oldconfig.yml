@@ -1,0 +1,5 @@
+template: '{{ MY COMPANY }}'
+
+values:
+  const:
+    MY_COMPANY: mycompany.com

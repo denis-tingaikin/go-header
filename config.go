@@ -19,6 +19,8 @@ package goheader
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -36,6 +38,24 @@ type Config struct {
 	TemplatePath string `yaml:"template-path"`
 	// Vars is map of values. Values can be used recursively.
 	Vars map[string]string `yaml:"vars"`
+	// ValuesMarker represents a string of marker for values. Default is "{{}}"
+	ValuesMarker string `yaml:"values-marker"`
+	// Parallel means a number of goroutines to proccess files.
+	Parallel int `yaml:"parallel"`
+}
+
+func (c *Config) GetValuesMarker() string {
+	if c.ValuesMarker == "" {
+		return "{{}}"
+	}
+	return c.ValuesMarker
+}
+
+func (c *Config) GetParallel() int {
+	if c.Parallel <= 0 {
+		return runtime.NumCPU()
+	}
+	return c.Parallel
 }
 
 func (c *Config) builtInValues() map[string]Value {
@@ -71,6 +91,16 @@ func (c *Config) GetValues() (map[string]Value, error) {
 }
 
 func (c *Config) GetTemplate() (string, error) {
+	var tmpl, err = c.getTemplate()
+
+	if err != nil {
+		return tmpl, err
+	}
+
+	return convertPlaceholders(tmpl, c.GetValuesMarker()), nil
+}
+
+func (c *Config) getTemplate() (string, error) {
 	if c.Template != "" {
 		return c.Template, nil
 	}
@@ -91,4 +121,31 @@ func (c *Config) Parse(p string) error {
 		return err
 	}
 	return yaml.Unmarshal(b, c)
+}
+
+func convertPlaceholders(input, marker string) string {
+	var left = marker[:len(marker)/2]
+	var right = marker[len(marker)/2:]
+
+	// Regular expression to find all {{...}} patterns
+	re := regexp.MustCompile(regexp.QuoteMeta(left) + `\s*([^` + right[:1] + `]+)\s*` + regexp.QuoteMeta(right))
+
+	// Replace each match with the converted version
+	result := re.ReplaceAllStringFunc(input, func(match string) string {
+		// Extract the inner content (between {{ and }})
+		inner := match[2 : len(match)-2]
+		inner = strings.TrimSpace(inner)
+
+		if strings.HasPrefix(inner, ".") {
+			return "{{ " + inner + " }}"
+		}
+
+		// Replace spaces with underscores
+		convertedInner := strings.ReplaceAll(inner, " ", "_")
+
+		// Add the dot prefix
+		return "{{ ." + convertedInner + " }}"
+	})
+
+	return result
 }

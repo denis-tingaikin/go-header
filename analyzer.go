@@ -228,7 +228,7 @@ func (a *Analyzer) getPerTargetValues(target *Target) (map[string]Value, error) 
 	res["MOD_YEAR_RANGE"] = a.values["YEAR_RANGE"]
 	if t, err := target.ModTime(); err == nil {
 		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
-		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{MOD_YEAR}})|({{MOD_YEAR}}))`}
+		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{.MOD_YEAR}})|({{.MOD_YEAR}}))`}
 	}
 
 	for _, v := range res {
