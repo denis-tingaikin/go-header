@@ -1,0 +1,3 @@
+/*mycompany.com*/
+
+package oldconfig

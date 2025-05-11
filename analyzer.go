@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2024 Denis Tingaikin
+// Copyright (c) 2020-2025 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,30 +17,39 @@
 package goheader
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
+	"text/template"
 	"time"
+
+	"golang.org/x/tools/go/analysis"
 )
 
-type Target struct {
-	Path string
-	File *ast.File
-}
+type CommentStyleType int
+
+const (
+	DoubleSlash CommentStyleType = iota
+	MultiLine
+	MultiLineStar
+)
 
 const iso = "2006-01-02 15:04:05 -0700"
 
-func (t *Target) ModTime() (time.Time, error) {
-	diff, err := exec.Command("git", "diff", t.Path).CombinedOutput()
+func modTime(path string) (time.Time, error) {
+	diff, err := exec.Command("git", "diff", path).CombinedOutput()
 	if err == nil && len(diff) == 0 {
-		line, err := exec.Command("git", "log", "-1", "--pretty=format:%cd", "--date=iso", "--", t.Path).CombinedOutput()
+		line, err := exec.Command("git", "log", "-1", "--pretty=format:%cd", "--date=iso", "--", path).CombinedOutput()
 		if err == nil {
 			return time.Parse(iso, string(line))
 		}
 	}
-	info, err := os.Stat(t.Path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -48,209 +57,253 @@ func (t *Target) ModTime() (time.Time, error) {
 }
 
 type Analyzer struct {
-	values   map[string]Value
-	template string
+	values                            map[string]Value
+	template, delimsLeft, delimsRight string
 }
 
-func (a *Analyzer) processPerTargetValues(target *Target) error {
-	a.values["mod-year"] = a.values["year"]
-	a.values["mod-year-range"] = a.values["year-range"]
-	if t, err := target.ModTime(); err == nil {
-		a.values["mod-year"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
-		a.values["mod-year-range"] = &RegexpValue{RawValue: `((20\d\d\-{{mod-year}})|({{mod-year}}))`}
+func New(opts ...Option) *Analyzer {
+	var a = Analyzer{
+		delimsLeft:  "{{",
+		delimsRight: "}}",
 	}
+	for _, opt := range opts {
+		opt.apply(&a)
+	}
+	return &a
+}
 
-	for _, v := range a.values {
-		if err := v.Calculate(a.values); err != nil {
-			return err
+type Result struct {
+	Err        error
+	Fix        string
+	End, Start token.Pos
+}
+
+func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comment) {
+	var comments = file.Comments
+	var list []*ast.Comment
+	if len(comments) > 0 {
+		list = comments[0].List
+	}
+	if len(comments) > 0 && strings.Contains(comments[0].Text(), "DO NOT EDIT") {
+		comments = comments[1:]
+		list = comments[0].List
+		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
+			list = list[1:]
 		}
 	}
-	return nil
+
+	return comments, list
 }
 
-func (a *Analyzer) Analyze(target *Target) (i Issue) {
+func (a *Analyzer) Analyze(path string, file *ast.File) (result analysis.Diagnostic) {
+	header := ""
+
 	if a.template == "" {
-		return NewIssue("Missed template for check")
+		return result
 	}
 
-	if err := a.processPerTargetValues(target); err != nil {
-		return &issue{msg: err.Error()}
-	}
+	var style CommentStyleType
 
-	file := target.File
-	var header string
-	var offset = Location{
-		Position: 1,
-	}
-	if len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package {
-		if strings.HasPrefix(file.Comments[0].List[0].Text, "/*") {
-			header = (&ast.CommentGroup{List: []*ast.Comment{file.Comments[0].List[0]}}).Text()
+	var comments, list = a.skipCodeGen(file)
+
+	if len(comments) > 0 && comments[0].Pos() < file.Package {
+		if strings.HasPrefix(list[0].Text, "/*") {
+
+			result.Pos = list[0].Pos()
+			result.End = list[0].End()
+
+			header = (&ast.CommentGroup{List: []*ast.Comment{list[0]}}).Text()
+			style = MultiLine
+
+			if handledHeader, ok := handleStarBlock(header); ok {
+				header = handledHeader
+				style = MultiLineStar
+			}
+
 		} else {
-			header = file.Comments[0].Text()
-			offset.Position += 3
+			style = DoubleSlash
+			header = comments[0].Text()
+			result.Pos = comments[0].Pos()
+			result.End = comments[0].Pos()
 		}
 	}
-	defer func() {
-		if i == nil {
-			return
-		}
-		fix, ok := a.generateFix(i, file, header)
-		if !ok {
-			return
-		}
-		i = NewIssueWithFix(i.Message(), i.Location(), fix)
-	}()
 	header = strings.TrimSpace(header)
+
+	vars, err := a.getPerTargetValues(path, file)
+	if err != nil {
+		result.Message = err.Error()
+		return result
+	}
+
 	if header == "" {
-		return NewIssue("Missed header for check")
+		result.Message = "missed copyright header"
+		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
+			TextEdits: []analysis.TextEdit{
+				{
+					NewText: []byte(a.generateFix(style, vars)),
+				},
+			},
+		})
+		return result
 	}
-	s := NewReader(header)
-	s.SetOffset(offset)
-	t := NewReader(a.template)
-	for !s.Done() && !t.Done() {
-		templateCh := t.Peek()
-		if templateCh == '{' {
-			name := a.readField(t)
-			if a.values[name] == nil {
-				return NewIssue(fmt.Sprintf("Template has unknown value: %v", name))
-			}
-			if i := a.values[name].Read(s); i != nil {
-				return i
-			}
+
+	templateRaw := a.quoteMeta(a.template)
+
+	template, err := template.New("header").Delims(a.delimsLeft, a.delimsRight).Parse(templateRaw)
+	if err != nil {
+		result.Message = err.Error()
+		return result
+	}
+
+	headerTemplateBuffer := new(bytes.Buffer)
+
+	if err := template.Execute(headerTemplateBuffer, vars); err != nil {
+		result.Message = err.Error()
+		return result
+	}
+
+	headerTemplate := headerTemplateBuffer.String()
+
+	r, err := regexp.Compile(headerTemplate)
+
+	if err != nil {
+		result.Message = err.Error()
+		return result
+	}
+
+	if !r.MatchString(header) {
+		result.Message = "template doesn't match"
+		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
+			TextEdits: []analysis.TextEdit{
+				{
+					NewText: []byte(a.generateFix(style, vars)),
+				},
+			},
+		})
+		return result
+	}
+
+	return result
+}
+
+func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) string {
+	// TODO: add values for quick fixes in config
+	vals["YEAR_RANGE"] = vals["YEAR"]
+	vals["MOD_YEAR_RANGE"] = vals["YEAR"]
+
+	for _, v := range vals {
+		_ = v.Calculate(vals)
+	}
+
+	fixTemplate, err := template.New("fix").Parse(a.template)
+	if err != nil {
+		return ""
+	}
+	fixOut := new(bytes.Buffer)
+	_ = fixTemplate.Execute(fixOut, vals)
+	res := fixOut.String()
+	resSplit := strings.Split(res, "\n")
+
+	for i := range resSplit {
+		switch style {
+		case DoubleSlash:
+			resSplit[i] = "// " + resSplit[i]
+		case MultiLineStar:
+			resSplit[i] = " * " + resSplit[i]
+		case MultiLine:
 			continue
 		}
-		sourceCh := s.Peek()
-		if sourceCh != templateCh {
-			l := s.Location()
-			notNextLine := func(r rune) bool {
-				return r != '\n'
-			}
-			actual := s.ReadWhile(notNextLine)
-			expected := t.ReadWhile(notNextLine)
-			return NewIssueWithLocation(fmt.Sprintf("Actual: %v\nExpected:%v", actual, expected), l)
-		}
-		s.Next()
-		t.Next()
 	}
-	if !s.Done() {
-		l := s.Location()
-		return NewIssueWithLocation(fmt.Sprintf("Unexpected string: %v", s.Finish()), l)
+
+	switch style {
+	case MultiLineStar:
+		resSplit = append([]string{"/*"}, resSplit...)
+		resSplit = append(resSplit, " */")
+	case MultiLine:
+		resSplit = append([]string{"/*"}, resSplit...)
+		resSplit = append(resSplit, "*/")
 	}
-	if !t.Done() {
-		l := s.Location()
-		return NewIssueWithLocation(fmt.Sprintf("Missed string: %v", t.Finish()), l)
-	}
-	return nil
+
+	return strings.Join(resSplit, "\n") + "\n"
 }
 
-func (a *Analyzer) readField(reader *Reader) string {
-	_ = reader.Next()
-	_ = reader.Next()
+func (a *Analyzer) getPerTargetValues(path string, file *ast.File) (map[string]Value, error) {
+	var res = make(map[string]Value)
 
-	r := reader.ReadWhile(func(r rune) bool {
-		return r != '}'
-	})
+	for k, v := range a.values {
+		res[k] = v
+	}
 
-	_ = reader.Next()
-	_ = reader.Next()
+	res["MOD_YEAR"] = a.values["YEAR"]
+	res["MOD_YEAR_RANGE"] = a.values["YEAR_RANGE"]
+	if t, err := modTime(path); err == nil {
+		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
+		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{.MOD_YEAR}})|({{.MOD_YEAR}}))`}
+	}
 
-	return strings.ToLower(strings.TrimSpace(r))
+	for _, v := range res {
+		if err := v.Calculate(res); err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
 }
 
-func New(options ...Option) *Analyzer {
-	a := &Analyzer{values: make(map[string]Value)}
-	for _, o := range options {
-		o.apply(a)
+// TODO: Do not vibe code
+func (a *Analyzer) quoteMeta(text string) string {
+	var result strings.Builder
+	i := 0
+	n := len(text)
+	for i < n {
+		// Check for template placeholder start
+		if i+3 < n && text[i] == a.delimsLeft[0] && text[i+1] == a.delimsLeft[1] {
+			// Find the end of the placeholder
+			end := i + 2
+			for end < n && !(text[end] == a.delimsRight[0] && end+1 < n && text[end+1] == a.delimsRight[1]) {
+				end++
+			}
+			if end+1 < n {
+				// Append the entire placeholder without escaping
+				result.WriteString(text[i : end+2])
+				i = end + 2
+				continue
+			}
+		}
+
+		// Escape regular expression metacharacters for non-template parts
+		c := text[i]
+		if strings.ContainsAny(string(c), `\.+*?()|[]{}^$`) {
+			result.WriteByte('\\')
+		}
+		result.WriteByte(c)
+		i++
 	}
-	return a
+
+	return result.String()
 }
 
-func (a *Analyzer) generateFix(i Issue, file *ast.File, header string) (Fix, bool) {
-	var expect string
-	t := NewReader(a.template)
-	for !t.Done() {
-		ch := t.Peek()
-		if ch == '{' {
-			f := a.values[a.readField(t)]
-			if f == nil {
-				return Fix{}, false
-			}
-			if f.Calculate(a.values) != nil {
-				return Fix{}, false
-			}
-			expect += f.Get()
-			continue
+func handleStarBlock(header string) (string, bool) {
+	var handled = false
+	return trimEachLine(header, func(s string) string {
+		var trimmed = strings.TrimSpace(s)
+		if !strings.HasPrefix(trimmed, "*") {
+			return s
 		}
-
-		expect += string(ch)
-		t.Next()
-	}
-
-	fix := Fix{Expected: strings.Split(expect, "\n")}
-	if !(len(file.Comments) > 0 && file.Comments[0].Pos() < file.Package) {
-		for i := range fix.Expected {
-			fix.Expected[i] = "// " + fix.Expected[i]
+		if v, ok := strings.CutPrefix(trimmed, "* "); ok {
+			handled = true
+			return v
+		} else {
+			var res, _ = strings.CutPrefix(trimmed, "*")
+			return res
 		}
-		return fix, true
-	}
+	}), handled
+}
 
-	actual := file.Comments[0].List[0].Text
-	if !strings.HasPrefix(actual, "/*") {
-		for i := range fix.Expected {
-			fix.Expected[i] = "// " + fix.Expected[i]
-		}
-		for _, c := range file.Comments[0].List {
-			fix.Actual = append(fix.Actual, c.Text)
-		}
-		i = NewIssueWithFix(i.Message(), i.Location(), fix)
-		return fix, true
+func trimEachLine(input string, trimFunc func(string) string) string {
+	lines := strings.Split(input, "\n")
+	for i, line := range lines {
+		lines[i] = trimFunc(line)
 	}
-
-	gets := func(i int, end bool) string {
-		if i < 0 {
-			return header
-		}
-		if end {
-			return header[i+1:]
-		}
-		return header[:i]
-	}
-	start := strings.Index(actual, gets(strings.IndexByte(header, '\n'), false))
-	if start < 0 {
-		return Fix{}, false // Should be impossible
-	}
-	nl := strings.LastIndexByte(actual[:start], '\n')
-	if nl >= 0 {
-		fix.Actual = strings.Split(actual[:nl], "\n")
-		fix.Expected = append(fix.Actual, fix.Expected...)
-		actual = actual[nl+1:]
-		start -= nl + 1
-	}
-
-	prefix := actual[:start]
-	if nl < 0 {
-		fix.Expected[0] = prefix + fix.Expected[0]
-	} else {
-		n := len(fix.Actual)
-		for i := range fix.Expected[n:] {
-			fix.Expected[n+i] = prefix + fix.Expected[n+i]
-		}
-	}
-
-	last := gets(strings.LastIndexByte(header, '\n'), true)
-	end := strings.Index(actual, last)
-	if end < 0 {
-		return Fix{}, false // Should be impossible
-	}
-
-	trailing := actual[end+len(last):]
-	if i := strings.IndexRune(trailing, '\n'); i < 0 {
-		fix.Expected[len(fix.Expected)-1] += trailing
-	} else {
-		fix.Expected[len(fix.Expected)-1] += trailing[:i]
-		fix.Expected = append(fix.Expected, strings.Split(trailing[i+1:], "\n")...)
-	}
-
-	fix.Actual = append(fix.Actual, strings.Split(actual, "\n")...)
-	return fix, true
+	return strings.Join(lines, "\n")
 }

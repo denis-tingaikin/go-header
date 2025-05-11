@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2025 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -16,8 +16,6 @@
 
 package goheader
 
-import "strings"
-
 type Option interface {
 	apply(*Analyzer)
 }
@@ -32,8 +30,19 @@ func WithValues(values map[string]Value) Option {
 	return applyAnalyzerOptionFunc(func(a *Analyzer) {
 		a.values = make(map[string]Value)
 		for k, v := range values {
-			a.values[strings.ToLower(k)] = v
+			a.values[k] = v
 		}
+	})
+}
+
+// WithDelims replaces default delims for parsing.
+func WithDelims(delims string) Option {
+	return applyAnalyzerOptionFunc(func(a *Analyzer) {
+		var left = delims[:len(delims)/2]
+		var right = delims[len(delims)/2:]
+
+		a.delimsLeft = left
+		a.delimsRight = right
 	})
 }
 

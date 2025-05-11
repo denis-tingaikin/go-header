@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 Denis Tingaikin
+// Copyright (c) 2020-2025 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,70 +17,21 @@
 package main
 
 import (
-	"fmt"
-	"go/parser"
-	"go/token"
-	"os"
-
-	"log"
+	"flag"
 
 	goheader "github.com/denis-tingaikin/go-header"
-	"github.com/denis-tingaikin/go-header/version"
+	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
-const configPath = ".go-header.yml"
+var defaultConfigPath = ".go-header.yml"
 
-type issue struct {
-	goheader.Issue
-	filePath string
-}
+var flagSet flag.FlagSet
 
 func main() {
-	paths := os.Args[1:]
-	if len(paths) == 0 {
-		log.Fatal("Paths has not passed")
-	}
-	if len(paths) == 1 {
-		if paths[0] == "version" {
-			fmt.Println(version.Value())
-			return
-		}
-	}
-	c := &goheader.Configuration{}
-	if err := c.Parse(configPath); err != nil {
-		log.Fatal(err.Error())
-	}
-	v, err := c.GetValues()
-	if err != nil {
-		log.Fatalf("Can not get values: %v", err.Error())
-	}
-	t, err := c.GetTemplate()
-	if err != nil {
-		log.Fatalf("Can not get template: %v", err.Error())
-	}
-	a := goheader.New(goheader.WithValues(v), goheader.WithTemplate(t))
-	s := token.NewFileSet()
-	var issues []*issue
-	for _, p := range paths {
-		f, err := parser.ParseFile(s, p, nil, parser.ParseComments)
-		if err != nil {
-			log.Fatalf("File %v can not be parsed due compilation errors %v", p, err.Error())
-		}
-		i := a.Analyze(&goheader.Target{
-			Path: p,
-			File: f,
-		})
-		if i != nil {
-			issues = append(issues, &issue{
-				Issue:    i,
-				filePath: p,
-			})
-		}
-	}
-	if len(issues) > 0 {
-		for _, issue := range issues {
-			fmt.Printf("%v:%v\n%v\n", issue.filePath, issue.Location(), issue.Message())
-		}
-		os.Exit(-1)
-	}
+	var configPath string
+	flagSet.StringVar(&configPath, "config", defaultConfigPath, "path to config file")
+	var analyser = goheader.NewAnalyzerFromConfigPath(&configPath)
+	analyser.Flags = flagSet
+
+	singlechecker.Main(analyser)
 }

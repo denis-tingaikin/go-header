@@ -1,0 +1,7 @@
+template: |-
+  A [[ .YEAR ]]
+  B
+delims: "[[]]"
+vars:
+  YEAR: 2020
+
