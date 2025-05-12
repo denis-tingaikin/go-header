@@ -18,124 +18,98 @@ package goheader
 
 import (
 	"go/ast"
+	"go/token"
 	"strings"
 	"sync"
 
 	"golang.org/x/tools/go/analysis"
 )
 
-// NewAnalyzer creates new analyzer based on template and goheader values
-func NewAnalyzer(c *Config) *analysis.Analyzer {
-	var initOncer sync.Once
-	var initErr error
-	var goheader *Analyzer
+// NewAnalyzer creates a new analyzer based on template and goheader values
+func NewAnalyzer(c *Config) (*analysis.Analyzer, error) {
+	templ, err := c.GetTemplate()
+	if err != nil {
+		return nil, err
+	}
+
+	vals, err := c.GetValues()
+	if err != nil {
+		return nil, err
+	}
+
+	goheader := New(WithTemplate(templ), WithValues(vals), WithDelims(c.GetDelims()))
 
 	return &analysis.Analyzer{
-		Doc:              "the_only_doc",
+		Doc:              "Check file license header",
 		URL:              "https://github.com/denis-tingaikin/go-header",
 		Name:             "goheader",
 		RunDespiteErrors: true,
-		Run: func(p *analysis.Pass) (any, error) {
-			initOncer.Do(func() {
-				var templ string
-				var vals map[string]Value
+		Run: func(pass *analysis.Pass) (any, error) {
+			jobCh := make(chan *ast.File, len(pass.Files))
 
-				templ, initErr = c.GetTemplate()
-				if initErr != nil {
-					return
-				}
-
-				vals, initErr = c.GetValues()
-				if initErr != nil {
-					return
-				}
-
-				goheader = New(WithTemplate(templ), WithValues(vals), WithDelims(c.GetDelims()))
-
-			})
-			if initErr != nil {
-				return nil, initErr
-			}
-
-			var wg sync.WaitGroup
-
-			var jobCh = make(chan *ast.File, len(p.Files))
-
-			for _, f := range p.Files {
+			for _, f := range pass.Files {
 				file := f
 				jobCh <- file
 			}
 			close(jobCh)
 
+			var wg sync.WaitGroup
+
 			for range c.GetParallel() {
 				wg.Add(1)
+
 				go func() {
 					defer wg.Done()
 
 					for file := range jobCh {
-						filename := p.Fset.Position(file.Pos()).Filename
+						filename := pass.Fset.PositionFor(file.Pos(), false).Filename
 						if !strings.HasSuffix(filename, ".go") {
 							continue
 						}
 
-						res := goheader.Analyze(filename, file)
+						diag, err := goheader.Analyze(filename, file)
+						if err != nil {
+							// TODO handle the error.
+							return
+						}
 
-						if res.Message == "" {
+						if diag == nil {
 							continue
 						}
+
 						var line = 1
 						if ast.IsGenerated(file) {
 							line = 4
 						}
 
-						var start = p.Fset.File(file.Pos()).LineStart(line)
-						var end = res.End - res.Pos + start
-						var endLine = p.Fset.File(file.Pos()).Line(end) + 1
-						end = p.Fset.File(file.Pos()).LineStart(endLine)
+						fileToken := pass.Fset.File(file.Pos())
 
-						res.Pos = start
-						res.End = end
+						start := fileToken.LineStart(line)
+						endLine := fileToken.Line(diag.End-diag.Pos+start) + 1
 
-						if len(res.SuggestedFixes) > 0 && len(res.SuggestedFixes[0].TextEdits) > 0 {
-							res.SuggestedFixes[0].TextEdits[0].Pos = start
-							res.SuggestedFixes[0].TextEdits[0].End = end
+						var end token.Pos
+						if endLine < fileToken.LineCount() {
+							end = fileToken.LineStart(endLine)
+						} else {
+							end = start
 						}
 
-						p.Report(res)
+						diag.Pos = start
+						diag.End = end
+
+						if len(diag.SuggestedFixes) > 0 && len(diag.SuggestedFixes[0].TextEdits) > 0 {
+							diag.SuggestedFixes[0].TextEdits[0].Pos = start
+							diag.SuggestedFixes[0].TextEdits[0].End = end
+						}
+
+						pass.Report(*diag)
 					}
 				}()
 			}
 
 			wg.Wait()
+
 			return nil, nil
 		},
-	}
-}
-
-// NewAnalyzerFromConfigPath creates a new analysis.Analyzer from goheader config file
-func NewAnalyzerFromConfigPath(config *string) *analysis.Analyzer {
-	var goheaderOncer sync.Once
-	var goheader *analysis.Analyzer
-
-	return &analysis.Analyzer{
-		Doc:              "the_only_doc",
-		URL:              "https://github.com/denis-tingaikin/go-header",
-		Name:             "goheader",
-		RunDespiteErrors: true,
-		Run: func(p *analysis.Pass) (any, error) {
-			var err error
-			goheaderOncer.Do(func() {
-				var cfg Config
-				if err = cfg.Parse(*config); err != nil {
-					return
-				}
-				goheader = NewAnalyzer(&cfg)
-			})
-
-			if err != nil {
-				return nil, err
-			}
-			return goheader.Run(p)
-		},
-	}
+	}, nil
 }
