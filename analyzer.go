@@ -57,23 +57,25 @@ func modTime(path string) (time.Time, error) {
 }
 
 type Analyzer struct {
-	values                            map[string]Value
-	template, delimsLeft, delimsRight string
+	values                map[string]Value
+	template              string
+	leftDelim, rightDelim string
 }
 
 func New(opts ...Option) *Analyzer {
-	var a = Analyzer{
-		delimsLeft:  "{{",
-		delimsRight: "}}",
+	a := &Analyzer{
+		leftDelim:  "{{",
+		rightDelim: "}}",
 	}
+
 	for _, opt := range opts {
-		opt.apply(&a)
+		opt.apply(a)
 	}
-	return &a
+
+	return a
 }
 
 type Result struct {
-	Err        error
 	Fix        string
 	End, Start token.Pos
 }
@@ -95,20 +97,20 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	return comments, list
 }
 
-func (a *Analyzer) Analyze(path string, file *ast.File) (result analysis.Diagnostic) {
-	header := ""
-
+func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, error) {
 	if a.template == "" {
-		return result
+		return nil, nil
 	}
 
+	var header string
 	var style CommentStyleType
 
 	var comments, list = a.skipCodeGen(file)
 
+	result := &analysis.Diagnostic{}
+
 	if len(comments) > 0 && comments[0].Pos() < file.Package {
 		if strings.HasPrefix(list[0].Text, "/*") {
-
 			result.Pos = list[0].Pos()
 			result.End = list[0].End()
 
@@ -121,72 +123,76 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (result analysis.Diagnos
 			}
 
 		} else {
-			style = DoubleSlash
-			header = comments[0].Text()
 			result.Pos = comments[0].Pos()
 			result.End = comments[0].Pos()
+
+			header = comments[0].Text()
+			style = DoubleSlash
 		}
 	}
-	header = strings.TrimSpace(header)
 
-	vars, err := a.getPerTargetValues(path, file)
+	vars, err := a.getPerTargetValues(path)
 	if err != nil {
-		result.Message = err.Error()
-		return result
+		return nil, err
 	}
 
+	header = strings.TrimSpace(header)
+
 	if header == "" {
+		text, err := a.generateFix(style, vars)
+		if err != nil {
+			return nil, err
+		}
+
 		result.Message = "missed copyright header"
 		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
-			TextEdits: []analysis.TextEdit{
-				{
-					NewText: []byte(a.generateFix(style, vars)),
-				},
-			},
+			TextEdits: []analysis.TextEdit{{
+				NewText: []byte(text),
+			}},
 		})
-		return result
+
+		return result, nil
 	}
 
 	templateRaw := a.quoteMeta(a.template)
 
-	template, err := template.New("header").Delims(a.delimsLeft, a.delimsRight).Parse(templateRaw)
+	tmpl, err := template.New("header").Delims(a.leftDelim, a.rightDelim).Parse(templateRaw)
 	if err != nil {
-		result.Message = err.Error()
-		return result
+		return nil, err
 	}
 
 	headerTemplateBuffer := new(bytes.Buffer)
 
-	if err := template.Execute(headerTemplateBuffer, vars); err != nil {
-		result.Message = err.Error()
-		return result
-	}
-
-	headerTemplate := headerTemplateBuffer.String()
-
-	r, err := regexp.Compile(headerTemplate)
-
+	err = tmpl.Execute(headerTemplateBuffer, vars)
 	if err != nil {
-		result.Message = err.Error()
-		return result
+		return nil, err
 	}
 
-	if !r.MatchString(header) {
+	exp, err := regexp.Compile(headerTemplateBuffer.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if !exp.MatchString(header) {
+		text, err := a.generateFix(style, vars)
+		if err != nil {
+			return nil, err
+		}
+
 		result.Message = "template doesn't match"
 		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
-			TextEdits: []analysis.TextEdit{
-				{
-					NewText: []byte(a.generateFix(style, vars)),
-				},
-			},
+			TextEdits: []analysis.TextEdit{{
+				NewText: []byte(text),
+			}},
 		})
-		return result
+
+		return result, nil
 	}
 
-	return result
+	return nil, nil
 }
 
-func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) string {
+func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (string, error) {
 	// TODO: add values for quick fixes in config
 	vals["YEAR_RANGE"] = vals["YEAR"]
 	vals["MOD_YEAR_RANGE"] = vals["YEAR"]
@@ -197,12 +203,16 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) st
 
 	fixTemplate, err := template.New("fix").Parse(a.template)
 	if err != nil {
-		return ""
+		return "", err
 	}
+
 	fixOut := new(bytes.Buffer)
-	_ = fixTemplate.Execute(fixOut, vals)
-	res := fixOut.String()
-	resSplit := strings.Split(res, "\n")
+	err = fixTemplate.Execute(fixOut, vals)
+	if err != nil {
+		return "", err
+	}
+
+	resSplit := strings.Split(fixOut.String(), "\n")
 
 	for i := range resSplit {
 		switch style {
@@ -224,10 +234,10 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) st
 		resSplit = append(resSplit, "*/")
 	}
 
-	return strings.Join(resSplit, "\n") + "\n"
+	return strings.Join(resSplit, "\n") + "\n", nil
 }
 
-func (a *Analyzer) getPerTargetValues(path string, file *ast.File) (map[string]Value, error) {
+func (a *Analyzer) getPerTargetValues(path string) (map[string]Value, error) {
 	var res = make(map[string]Value)
 
 	for k, v := range a.values {
@@ -253,14 +263,15 @@ func (a *Analyzer) getPerTargetValues(path string, file *ast.File) (map[string]V
 // TODO: Do not vibe code
 func (a *Analyzer) quoteMeta(text string) string {
 	var result strings.Builder
-	i := 0
+	var i int
+
 	n := len(text)
 	for i < n {
 		// Check for template placeholder start
-		if i+3 < n && text[i] == a.delimsLeft[0] && text[i+1] == a.delimsLeft[1] {
+		if i+3 < n && text[i] == a.leftDelim[0] && text[i+1] == a.leftDelim[1] {
 			// Find the end of the placeholder
 			end := i + 2
-			for end < n && !(text[end] == a.delimsRight[0] && end+1 < n && text[end+1] == a.delimsRight[1]) {
+			for end < n && !(text[end] == a.rightDelim[0] && end+1 < n && text[end+1] == a.rightDelim[1]) {
 				end++
 			}
 			if end+1 < n {
@@ -277,6 +288,7 @@ func (a *Analyzer) quoteMeta(text string) string {
 			result.WriteByte('\\')
 		}
 		result.WriteByte(c)
+
 		i++
 	}
 
@@ -302,8 +314,10 @@ func handleStarBlock(header string) (string, bool) {
 
 func trimEachLine(input string, trimFunc func(string) string) string {
 	lines := strings.Split(input, "\n")
+
 	for i, line := range lines {
 		lines[i] = trimFunc(line)
 	}
+
 	return strings.Join(lines, "\n")
 }

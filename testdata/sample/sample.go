@@ -1,0 +1,5 @@
+/*MY TITLQ!*/ // want `template doesn't match`
+
+//golangcitest:args -Egoheader
+//golangcitest:config_path testdata/goheader.yml
+package sample

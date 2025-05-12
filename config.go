@@ -97,7 +97,7 @@ func (c *Config) GetTemplate() (string, error) {
 		return tmpl, err
 	}
 
-	return migrageOldConfig(tmpl, c.GetDelims()), nil
+	return migrateOldConfig(tmpl, c.GetDelims()), nil
 }
 
 func (c *Config) getTemplate() (string, error) {
@@ -107,12 +107,15 @@ func (c *Config) getTemplate() (string, error) {
 	if c.TemplatePath == "" {
 		return "", nil
 	}
-	if b, err := os.ReadFile(c.TemplatePath); err != nil {
+
+	b, err := os.ReadFile(c.TemplatePath)
+	if err != nil {
 		return "", err
-	} else {
-		c.Template = strings.TrimSpace(string(b))
-		return c.Template, nil
 	}
+
+	c.Template = strings.TrimSpace(string(b))
+
+	return c.Template, nil
 }
 
 func (c *Config) Parse(p string) error {
@@ -120,18 +123,19 @@ func (c *Config) Parse(p string) error {
 	if err != nil {
 		return err
 	}
+
 	return yaml.Unmarshal(b, c)
 }
 
-func migrageOldConfig(input string, delims string) string {
-	var left = delims[:len(delims)/2]
-	var right = delims[len(delims)/2:]
+func migrateOldConfig(input string, delims string) string {
+	left := delims[:len(delims)/2]
+	right := delims[len(delims)/2:]
 
 	// Regular expression to find all {{...}} patterns
-	re := regexp.MustCompile(regexp.QuoteMeta("{{") + `\s*([^}]+)\s*` + regexp.QuoteMeta("}}"))
+	exp := regexp.MustCompile(regexp.QuoteMeta("{{") + `\s*([^}]+)\s*` + regexp.QuoteMeta("}}"))
 
 	// Replace each match with the converted version
-	result := re.ReplaceAllStringFunc(input, func(match string) string {
+	result := exp.ReplaceAllStringFunc(input, func(match string) string {
 		// Extract the inner content (between {{ and }})
 		inner := match[2 : len(match)-2]
 		inner = strings.TrimSpace(inner)

@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	goheader "github.com/denis-tingaikin/go-header"
 	"golang.org/x/tools/go/analysis/singlechecker"
@@ -29,9 +30,20 @@ var flagSet flag.FlagSet
 
 func main() {
 	var configPath string
+
 	flagSet.StringVar(&configPath, "config", defaultConfigPath, "path to config file")
-	var analyser = goheader.NewAnalyzerFromConfigPath(&configPath)
+
+	var cfg goheader.Config
+	if err := cfg.Parse(configPath); err != nil {
+		log.Fatal(err)
+	}
+
+	analyser, err := goheader.NewAnalyzer(&cfg)
 	analyser.Flags = flagSet
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	singlechecker.Main(analyser)
 }

@@ -1,5 +1,3 @@
-/*oops!*/ // want `template doens't match`
-
 //golangcitest:args -Egoheader
 //golangcitest:config_path testdata/goheader.yml
 package testdata
