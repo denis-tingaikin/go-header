@@ -84,12 +84,26 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	if len(comments) > 0 {
 		list = comments[0].List
 	}
-	if len(comments) > 0 && strings.Contains(comments[0].Text(), "DO NOT EDIT") {
+	if len(comments) > 0 && (strings.Contains(comments[0].Text(), "DO NOT EDIT") || strings.Contains(comments[0].Text(), "go:build")) {
 		comments = comments[1:]
 		list = comments[0].List
 		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
 			list = list[1:]
 		}
+	}
+
+	for len(list) > 0 {
+		if strings.Contains(list[0].Text, "go:build") {
+			list = list[1:]
+			if len(list) == 0 {
+				comments = comments[1:]
+				if len(comments) > 0 {
+					list = comments[0].List
+				}
+			}
+			continue
+		}
+		break
 	}
 
 	return comments, list

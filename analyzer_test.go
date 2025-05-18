@@ -49,6 +49,7 @@ func TestAnalyzer(t *testing.T) {
 		{name: "regexpvalue", cfgFilename: "regexpvalue.yml"},
 		{name: "starcomment", cfgFilename: "starcomment.yml"},
 		{name: "unicodeheader", cfgFilename: "unicodeheader.yml"},
+		{name: "gobuild", cfgFilename: "gobuild.yml"},
 	}
 
 	for _, test := range testCases {
