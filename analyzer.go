@@ -84,7 +84,7 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	if len(comments) > 0 {
 		list = comments[0].List
 	}
-	if len(comments) > 0 && (strings.Contains(comments[0].Text(), "DO NOT EDIT") || strings.Contains(comments[0].Text(), "go:build")) {
+	if len(comments) > 0 && strings.Contains(comments[0].Text(), "DO NOT EDIT") {
 		comments = comments[1:]
 		list = comments[0].List
 		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
@@ -93,7 +93,7 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	}
 
 	for len(list) > 0 {
-		if strings.Contains(list[0].Text, "go:build") {
+		if strings.Contains(list[0].Text, "go:") || strings.Contains(list[0].Text, "+build") {
 			list = list[1:]
 			if len(list) == 0 {
 				comments = comments[1:]
