@@ -18,6 +18,7 @@ package goheader
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -92,6 +93,20 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 		if len(list) > 0 && strings.HasSuffix(list[0].Text, "//line:") {
 			list = list[1:]
 		}
+	}
+
+	for len(list) > 0 {
+		if isDirective(list[0].Text) {
+			list = list[1:]
+			if len(list) == 0 {
+				comments = comments[1:]
+				if len(comments) > 0 {
+					list = comments[0].List
+				}
+			}
+			continue
+		}
+		break
 	}
 
 	return comments, list
@@ -192,12 +207,23 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 	return nil, nil
 }
 
+func isDirective(comment string) bool {
+	return strings.HasPrefix(comment, "//go:") ||
+		strings.HasPrefix(comment, "//extern") ||
+		strings.HasPrefix(comment, "//export") ||
+		strings.HasPrefix(comment, "//line") ||
+		strings.HasPrefix(comment, "// +build")
+}
+
 func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (string, error) {
 	// TODO: add values for quick fixes in config
 	vals["YEAR_RANGE"] = vals["YEAR"]
 	vals["MOD_YEAR_RANGE"] = vals["YEAR"]
 
 	for _, v := range vals {
+		if _, ok := v.(*RegexpValue); ok {
+			return "", errors.New("fixes are not supported for regexp values. See more details https://github.com/denis-tingaikin/go-header/issues/52")
+		}
 		_ = v.Calculate(vals)
 	}
 
