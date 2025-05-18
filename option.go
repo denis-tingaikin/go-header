@@ -41,8 +41,8 @@ func WithDelims(delims string) Option {
 		var left = delims[:len(delims)/2]
 		var right = delims[len(delims)/2:]
 
-		a.delimsLeft = left
-		a.delimsRight = right
+		a.leftDelim = left
+		a.rightDelim = right
 	})
 }
 
