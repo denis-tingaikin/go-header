@@ -79,7 +79,7 @@ func TestAnalyzer_fix(t *testing.T) {
 		{dir: "fix", cfgFilename: "fix.yml"},
 		{dir: "sample", cfgFilename: "sample.yml"},
 		{dir: "noheader", cfgFilename: "noheader.yml"},
-		// {dir: "regexpvalue_issue", cfgFilename: "regexpvalue_issue.yml"}, // FIXME BUG
+		// {dir: "regexpvalue_issue", cfgFilename: "regexpvalue_issue.yml"}, // TODO: https://github.com/denis-tingaikin/go-header/issues/52
 	}
 
 	testdata := analysistest.TestData()
