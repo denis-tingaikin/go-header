@@ -1,6 +1,10 @@
+/*MY TITLE.*/
+
 //golangcitest:args -Egoheader
 //golangcitest:config_path testdata/goheader.yml
-package testdata
+//golangcitest:expected_exitcode 1
+
+package cgo
 
 /*
  #include <stdio.h>
