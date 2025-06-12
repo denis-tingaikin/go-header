@@ -94,7 +94,7 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	}
 
 	for len(list) > 0 {
-		if isDirective(list[0].Text) {
+		if a.isDirective(list[0].Text) {
 			list = list[1:]
 			if len(list) == 0 {
 				comments = comments[1:]
@@ -255,17 +255,16 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 	}
 
 	if !exp.MatchString(header) {
-		text, err := a.generateFix(style, vars)
-		if err != nil {
-			return nil, err
-		}
+		text, _ := a.generateFix(style, vars)
 
 		result.Message = "template doesn't match"
-		result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
-			TextEdits: []analysis.TextEdit{{
-				NewText: []byte(text),
-			}},
-		})
+		if text != "" {
+			result.SuggestedFixes = append(result.SuggestedFixes, analysis.SuggestedFix{
+				TextEdits: []analysis.TextEdit{{
+					NewText: []byte(text),
+				}},
+			})
+		}
 
 		return result, nil
 	}
@@ -273,12 +272,16 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 	return nil, nil
 }
 
-func isDirective(comment string) bool {
-	return strings.HasPrefix(comment, "//go:") ||
-		strings.HasPrefix(comment, "//extern") ||
-		strings.HasPrefix(comment, "//export") ||
-		strings.HasPrefix(comment, "//line") ||
-		strings.HasPrefix(comment, "// +build")
+var directiveRegexp = regexp.MustCompile(`([a-z0-9]+:[a-z0-9])|(\+build)`)
+
+func (a *Analyzer) isDirective(comment string) bool {
+	comment = strings.TrimPrefix(comment, "//")
+	comment = strings.TrimPrefix(comment, "/*")
+	comment = strings.TrimSpace(comment)
+
+	comment = strings.Split(comment, " ")[0]
+
+	return directiveRegexp.Match([]byte(comment))
 }
 
 func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (string, error) {
