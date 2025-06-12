@@ -5,6 +5,8 @@
 
 //go:ignore
 
+//extern
+
 // A 2020
 // B
 

@@ -281,6 +281,10 @@ func (a *Analyzer) isDirective(comment string) bool {
 
 	comment = strings.Split(comment, " ")[0]
 
+	if strings.HasPrefix(comment, "line") || strings.HasPrefix(comment, "extern") || strings.HasPrefix(comment, "export") {
+		return true
+	}
+
 	return directiveRegexp.Match([]byte(comment))
 }
 
