@@ -1,4 +1,4 @@
-/*MY TITLE.*/
+/*MY TITLE1*/ //want `template doesn't match`
 
 //golangcitest:args -Egoheader
 //golangcitest:config_path testdata/goheader.yml
@@ -11,7 +11,7 @@ package cgo
  #include <stdlib.h>
 
  void myprint(char* s) {
- 	printf("%d\n", s);
+ 	printf("%s\n", s);
  }
 */
 import "C"
