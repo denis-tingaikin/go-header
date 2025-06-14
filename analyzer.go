@@ -63,6 +63,9 @@ type Analyzer struct {
 }
 
 func New(settings *Settings) *analysis.Analyzer {
+	if settings == nil {
+		panic("settings must not be nil")
+	}
 	analyzer := Analyzer{Settings: settings}
 
 	return &analysis.Analyzer{
@@ -105,6 +108,7 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 	close(jobCh)
 
 	var wg sync.WaitGroup
+	var reportMutex sync.Mutex
 
 	for range a.Settings.Parallel {
 		wg.Add(1)
@@ -113,7 +117,7 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 			defer wg.Done()
 
 			for file := range jobCh {
-				filename := pass.Fset.PositionFor(file.Pos(), false).Filename
+				filename := pass.Fset.PositionFor(file.Pos(), true).Filename
 				if !strings.HasSuffix(filename, ".go") {
 					continue
 				}
@@ -136,7 +140,7 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 				fileToken := pass.Fset.File(file.Pos())
 
 				start := fileToken.LineStart(line)
-				endLine := fileToken.Line(diag.End-diag.Pos+start) + 1
+				endLine := fileToken.Line(diag.End-diag.Pos+start) + line
 
 				var end token.Pos
 				if endLine < fileToken.LineCount() {
@@ -153,7 +157,9 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 					diag.SuggestedFixes[0].TextEdits[0].End = end
 				}
 
+				reportMutex.Lock()
 				pass.Report(*diag)
+				reportMutex.Unlock()
 			}
 		}()
 	}
@@ -307,14 +313,14 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (s
 }
 
 func (a *Analyzer) getPerTargetValues(path string) (map[string]Value, error) {
-	var res = make(map[string]Value, len(a.values))
+	var res = make(map[string]Value, len(a.Settings.Values))
 
-	for k, v := range a.values {
+	for k, v := range a.Settings.Values {
 		res[k] = v.Clone()
 	}
 
-	res["MOD_YEAR"] = a.values["YEAR"].Clone()
-	res["MOD_YEAR_RANGE"] = a.values["YEAR_RANGE"].Clone()
+	res["MOD_YEAR"] = a.Settings.Values["YEAR"].Clone()
+	res["MOD_YEAR_RANGE"] = a.Settings.Values["YEAR_RANGE"].Clone()
 
 	if t, err := modTime(path); err == nil {
 		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
