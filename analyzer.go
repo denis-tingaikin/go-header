@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -57,22 +58,19 @@ func modTime(path string) (time.Time, error) {
 }
 
 type Analyzer struct {
-	values                map[string]Value
-	template              string
-	leftDelim, rightDelim string
+	Settings *Settings
 }
 
-func New(opts ...Option) *Analyzer {
-	a := &Analyzer{
-		leftDelim:  "{{",
-		rightDelim: "}}",
-	}
+func New(settings *Settings) *analysis.Analyzer {
+	analyzer := Analyzer{Settings: settings}
 
-	for _, opt := range opts {
-		opt.apply(a)
+	return &analysis.Analyzer{
+		Doc:              "Check file license header",
+		URL:              "https://github.com/denis-tingaikin/go-header",
+		Name:             "goheader",
+		RunDespiteErrors: true,
+		Run:              analyzer.Run,
 	}
-
-	return a
 }
 
 type Result struct {
@@ -97,8 +95,76 @@ func (a *Analyzer) skipCodeGen(file *ast.File) ([]*ast.CommentGroup, []*ast.Comm
 	return comments, list
 }
 
+func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
+	jobCh := make(chan *ast.File, len(pass.Files))
+
+	for _, f := range pass.Files {
+		file := f
+		jobCh <- file
+	}
+	close(jobCh)
+
+	var wg sync.WaitGroup
+
+	for range a.Settings.Parallel {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for file := range jobCh {
+				filename := pass.Fset.PositionFor(file.Pos(), false).Filename
+				if !strings.HasSuffix(filename, ".go") {
+					continue
+				}
+
+				diag, err := a.Analyze(filename, file)
+				if err != nil {
+					// TODO handle the error.
+					return
+				}
+
+				if diag == nil {
+					continue
+				}
+
+				var line = 1
+				if ast.IsGenerated(file) {
+					line = 4
+				}
+
+				fileToken := pass.Fset.File(file.Pos())
+
+				start := fileToken.LineStart(line)
+				endLine := fileToken.Line(diag.End-diag.Pos+start) + 1
+
+				var end token.Pos
+				if endLine < fileToken.LineCount() {
+					end = fileToken.LineStart(endLine)
+				} else {
+					end = start
+				}
+
+				diag.Pos = start
+				diag.End = end
+
+				if len(diag.SuggestedFixes) > 0 && len(diag.SuggestedFixes[0].TextEdits) > 0 {
+					diag.SuggestedFixes[0].TextEdits[0].Pos = start
+					diag.SuggestedFixes[0].TextEdits[0].End = end
+				}
+
+				pass.Report(*diag)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	return nil, nil
+}
+
 func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, error) {
-	if a.template == "" {
+	if a.Settings.Template == "" {
 		return nil, nil
 	}
 
@@ -154,9 +220,9 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 		return result, nil
 	}
 
-	templateRaw := a.quoteMeta(a.template)
+	templateRaw := a.quoteMeta(a.Settings.Template)
 
-	tmpl, err := template.New("header").Delims(a.leftDelim, a.rightDelim).Parse(templateRaw)
+	tmpl, err := template.New("header").Delims(a.Settings.LeftDelim, a.Settings.RightDelim).Parse(templateRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +267,7 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (s
 		_ = v.Calculate(vals)
 	}
 
-	fixTemplate, err := template.New("fix").Parse(a.template)
+	fixTemplate, err := template.New("fix").Parse(a.Settings.Template)
 	if err != nil {
 		return "", err
 	}
@@ -240,12 +306,12 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (s
 func (a *Analyzer) getPerTargetValues(path string) (map[string]Value, error) {
 	var res = make(map[string]Value)
 
-	for k, v := range a.values {
+	for k, v := range a.Settings.Values {
 		res[k] = v
 	}
 
-	res["MOD_YEAR"] = a.values["YEAR"]
-	res["MOD_YEAR_RANGE"] = a.values["YEAR_RANGE"]
+	res["MOD_YEAR"] = a.Settings.Values["YEAR"]
+	res["MOD_YEAR_RANGE"] = a.Settings.Values["YEAR_RANGE"]
 	if t, err := modTime(path); err == nil {
 		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
 		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{.MOD_YEAR}})|({{.MOD_YEAR}}))`}
@@ -268,10 +334,10 @@ func (a *Analyzer) quoteMeta(text string) string {
 	n := len(text)
 	for i < n {
 		// Check for template placeholder start
-		if i+3 < n && text[i] == a.leftDelim[0] && text[i+1] == a.leftDelim[1] {
+		if i+3 < n && text[i] == a.Settings.LeftDelim[0] && text[i+1] == a.Settings.LeftDelim[1] {
 			// Find the end of the placeholder
 			end := i + 2
-			for end < n && !(text[end] == a.rightDelim[0] && end+1 < n && text[end+1] == a.rightDelim[1]) {
+			for end < n && !(text[end] == a.Settings.RightDelim[0] && end+1 < n && text[end+1] == a.Settings.RightDelim[1]) {
 				end++
 			}
 			if end+1 < n {

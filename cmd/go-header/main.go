@@ -18,32 +18,66 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	goheader "github.com/denis-tingaikin/go-header"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
-var defaultConfigPath = ".go-header.yml"
-
-var flagSet flag.FlagSet
+const defaultConfigPath = ".go-header.yml"
 
 func main() {
-	var configPath string
-
-	flagSet.StringVar(&configPath, "config", defaultConfigPath, "path to config file")
-
-	var cfg goheader.Config
-	if err := cfg.Parse(configPath); err != nil {
-		log.Fatal(err)
+	cfgFlags := &ConfigFlag{
+		configPath: defaultConfigPath,
+		settings:   &goheader.Settings{},
 	}
 
-	analyser, err := goheader.NewAnalyzer(&cfg)
+	var flagSet flag.FlagSet
+
+	flagSet.Var(cfgFlags, "config", "path to the configuration file")
+
+	analyser := goheader.New(cfgFlags.settings)
+
 	analyser.Flags = flagSet
 
-	if err != nil {
-		log.Fatal(err)
+	singlechecker.Main(analyser)
+}
+
+type ConfigFlag struct {
+	configPath string
+
+	settings *goheader.Settings
+}
+
+func (c ConfigFlag) String() string {
+	if len(c.configPath) != 0 {
+		// Ignore errors because `String` is called before `Set`.
+		cfg, _ := goheader.Parse(c.configPath)
+		if cfg != nil {
+			_ = cfg.FillSettings(c.settings)
+		}
 	}
 
-	singlechecker.Main(analyser)
+	return c.configPath
+}
+
+func (c ConfigFlag) Set(w string) error {
+	if w == "" {
+		w = defaultConfigPath
+	}
+
+	c.configPath = w
+
+	if len(c.configPath) != 0 {
+		cfg, err := goheader.Parse(c.configPath)
+		if err != nil {
+			return err
+		}
+
+		err = cfg.FillSettings(c.settings)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
