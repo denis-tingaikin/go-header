@@ -14,8 +14,8 @@ Simple go source code linter providing checks for copyrgiht headers.
 | ✅ **Regex Customization**   | ✔️     | User-defined pattern matching            |
 | ✅ **Automatic Year Checks** | ✔️     | Validates & updates copyright years      |
 | ✅ **Auto-Fix Files**        | ✔️     | In-place header corrections              |
-| ✅ **Go/Template Support**   | ✔️     | *In development*                         |
-| ⏳ **Multi-License Support** | ❌     | Does any one need this? 🤔                |
+| ✅ **Go/Template Support**   | ✔️     | go templates can be used in headers      |
+| 🤔  **Multi-License Support** | ❌    | Does any one need this?                  |
 
 
 
