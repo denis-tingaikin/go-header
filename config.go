@@ -58,7 +58,32 @@ func (c *Config) GetParallel() int {
 	return c.Parallel
 }
 
-func (c *Config) builtInValues() map[string]Value {
+func (c *Config) GetValues() (map[string]Value, error) {
+	result := builtInValues()
+
+	createConst := func(raw string) Value {
+		return &ConstValue{RawValue: raw}
+	}
+
+	createRegexp := func(raw string) Value {
+		return &RegexpValue{RawValue: raw}
+	}
+
+	appendValues := func(m map[string]string, create func(string) Value) {
+		for k, v := range m {
+			result[strings.ToLower(k)] = create(v)
+			result[strings.ToUpper(k)] = create(v)
+		}
+	}
+
+	appendValues(c.Values["const"], createConst)
+	appendValues(c.Values["regexp"], createRegexp)
+	appendValues(c.Vars, createRegexp)
+
+	return result, nil
+}
+
+func builtInValues() map[string]Value {
 	var result = make(map[string]Value)
 	year := fmt.Sprint(time.Now().Year())
 	result["YEAR_RANGE"] = &RegexpValue{
@@ -68,26 +93,6 @@ func (c *Config) builtInValues() map[string]Value {
 		RawValue: year,
 	}
 	return result
-}
-
-func (c *Config) GetValues() (map[string]Value, error) {
-	var result = c.builtInValues()
-	createConst := func(raw string) Value {
-		return &ConstValue{RawValue: raw}
-	}
-	createRegexp := func(raw string) Value {
-		return &RegexpValue{RawValue: raw}
-	}
-	appendValues := func(m map[string]string, create func(string) Value) {
-		for k, v := range m {
-			result[strings.ToLower(k)] = create(v)
-			result[strings.ToUpper(k)] = create(v)
-		}
-	}
-	appendValues(c.Values["const"], createConst)
-	appendValues(c.Values["regexp"], createRegexp)
-	appendValues(c.Vars, createRegexp)
-	return result, nil
 }
 
 func (c *Config) GetTemplate() (string, error) {
@@ -118,15 +123,6 @@ func (c *Config) getTemplate() (string, error) {
 	return c.Template, nil
 }
 
-func (c *Config) Parse(p string) error {
-	b, err := os.ReadFile(p)
-	if err != nil {
-		return err
-	}
-
-	return yaml.Unmarshal(b, c)
-}
-
 func migrateOldConfig(input string, delims string) string {
 	left := delims[:len(delims)/2]
 	right := delims[len(delims)/2:]
@@ -152,4 +148,113 @@ func migrateOldConfig(input string, delims string) string {
 	})
 
 	return result
+}
+
+func (c *Config) FillSettings(settings *Settings) error {
+	delimiters := c.GetDelims()
+	if delimiters != "" && len(delimiters)%2 == 0 {
+		settings.LeftDelim = delimiters[:len(delimiters)/2]
+		settings.RightDelim = delimiters[len(delimiters)/2:]
+	}
+
+	if settings.LeftDelim == "" {
+		settings.LeftDelim = "{{"
+	}
+	if settings.RightDelim == "" {
+		settings.RightDelim = "}}"
+	}
+
+	tmpl, err := c.GetTemplate()
+	if err != nil {
+		return err
+	}
+	if tmpl != "" {
+		settings.Template = tmpl
+	}
+
+	vals, err := c.GetValues()
+	if err != nil {
+		return err
+	}
+
+	if len(vals) > 0 {
+		settings.Values = vals
+	}
+
+	settings.Parallel = c.GetParallel()
+
+	return nil
+}
+
+func Parse(data string) (*Config, error) {
+	b, err := os.ReadFile(data)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &Config{}
+
+	err = yaml.Unmarshal(b, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+type Settings struct {
+	Values                map[string]Value
+	Template              string
+	LeftDelim, RightDelim string
+	Parallel              int
+}
+
+func (c *Settings) SetTemplate(tmplStr, tmplPath string) error {
+	if tmplStr != "" {
+		c.Template = tmplStr
+		return nil
+	}
+
+	if tmplPath == "" {
+		c.Template = ""
+		return nil
+	}
+
+	b, err := os.ReadFile(tmplPath)
+	if err != nil {
+		return err
+	}
+
+	c.Template = strings.TrimSpace(string(b))
+
+	return nil
+}
+
+func (c *Settings) SetDelimiters(left, right string) {
+	c.LeftDelim = left
+	if left == "" {
+		c.LeftDelim = "{{"
+	}
+
+	c.RightDelim = right
+	if right == "" {
+		c.RightDelim = "}}"
+	}
+}
+
+func (c *Settings) SetValues(values map[string]string) {
+	result := builtInValues()
+
+	appendValues := func(m map[string]string, create func(string) Value) {
+		for k, v := range m {
+			result[strings.ToLower(k)] = create(v)
+			result[strings.ToUpper(k)] = create(v)
+		}
+	}
+
+	appendValues(values, func(raw string) Value {
+		return &RegexpValue{RawValue: raw}
+	})
+
+	c.Values = result
 }
