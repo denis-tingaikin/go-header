@@ -117,7 +117,7 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 			defer wg.Done()
 
 			for file := range jobCh {
-				filename := pass.Fset.PositionFor(file.Pos(), true).Filename
+				filename := pass.Fset.PositionFor(file.Pos(), a.Settings.CGO).Filename
 				if !strings.HasSuffix(filename, ".go") {
 					continue
 				}

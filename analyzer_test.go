@@ -59,6 +59,8 @@ func TestAnalyzer(t *testing.T) {
 			cfg, err := goheader.Parse(filepath.Join(testdata, "src", test.name, test.cfgFilename))
 			require.NoError(t, err)
 
+			cfg.Experimental.CGO = true
+
 			settings := &goheader.Settings{}
 
 			err = cfg.FillSettings(settings)
@@ -95,6 +97,8 @@ func TestAnalyzer_fix(t *testing.T) {
 
 			cfg, err := goheader.Parse(filepath.Join(testdata, test.dir, test.cfgFilename))
 			require.NoError(t, err)
+
+			cfg.Experimental.CGO = true
 
 			settings := &goheader.Settings{}
 
