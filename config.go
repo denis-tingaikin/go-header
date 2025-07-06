@@ -27,6 +27,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Experimental represents config params for enabling experimental / work in progress features
+type Experimental struct {
+	// CGO if true enables support for cgo files. Currently positioning of issues can be float.
+	CGO bool `yaml:"cgo"`
+}
+
 // Config represents go-header linter setup parameters
 type Config struct {
 	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
@@ -42,6 +48,8 @@ type Config struct {
 	Delims string `yaml:"delims"`
 	// Parallel means a number of goroutines to proccess files. Default runtime.NumCPU()
 	Parallel int `yaml:"parallel"`
+	// Experimental is config for enabling experimental / work in progress features.
+	Experimental Experimental `yaml:"experimental"`
 }
 
 func (c *Config) GetDelims() string {
@@ -182,6 +190,7 @@ func (c *Config) FillSettings(settings *Settings) error {
 	}
 
 	settings.Parallel = c.GetParallel()
+	settings.CGO = c.Experimental.CGO
 
 	return nil
 }
@@ -207,6 +216,7 @@ type Settings struct {
 	Template              string
 	LeftDelim, RightDelim string
 	Parallel              int
+	CGO                   bool
 }
 
 func (c *Settings) SetTemplate(tmplStr, tmplPath string) error {

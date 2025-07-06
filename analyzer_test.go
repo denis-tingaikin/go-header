@@ -49,6 +49,7 @@ func TestAnalyzer(t *testing.T) {
 		{name: "regexpvalue", cfgFilename: "regexpvalue.yml"},
 		{name: "starcomment", cfgFilename: "starcomment.yml"},
 		{name: "unicodeheader", cfgFilename: "unicodeheader.yml"},
+		{name: "gobuild", cfgFilename: "gobuild.yml"},
 	}
 
 	for _, test := range testCases {
@@ -57,6 +58,8 @@ func TestAnalyzer(t *testing.T) {
 
 			cfg, err := goheader.Parse(filepath.Join(testdata, "src", test.name, test.cfgFilename))
 			require.NoError(t, err)
+
+			cfg.Experimental.CGO = true
 
 			settings := &goheader.Settings{}
 
@@ -78,7 +81,7 @@ func TestAnalyzer_fix(t *testing.T) {
 		{dir: "fix", cfgFilename: "fix.yml"},
 		{dir: "sample", cfgFilename: "sample.yml"},
 		{dir: "noheader", cfgFilename: "noheader.yml"},
-		// {dir: "regexpvalue_issue", cfgFilename: "regexpvalue_issue.yml"}, // FIXME BUG
+		// {dir: "regexpvalue_issue", cfgFilename: "regexpvalue_issue.yml"}, // TODO: https://github.com/denis-tingaikin/go-header/issues/52
 	}
 
 	testdata := analysistest.TestData()
@@ -94,6 +97,8 @@ func TestAnalyzer_fix(t *testing.T) {
 
 			cfg, err := goheader.Parse(filepath.Join(testdata, test.dir, test.cfgFilename))
 			require.NoError(t, err)
+
+			cfg.Experimental.CGO = true
 
 			settings := &goheader.Settings{}
 

@@ -1,13 +1,17 @@
+/*MY TITLE1*/ //want `template doesn't match`
+
 //golangcitest:args -Egoheader
 //golangcitest:config_path testdata/goheader.yml
-package testdata
+//golangcitest:expected_exitcode 1
+
+package cgo
 
 /*
  #include <stdio.h>
  #include <stdlib.h>
 
  void myprint(char* s) {
- 	printf("%d\n", s);
+ 	printf("%s\n", s);
  }
 */
 import "C"

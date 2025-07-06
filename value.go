@@ -26,6 +26,7 @@ type Value interface {
 	Calculate(map[string]Value) error
 	Get() string
 	Raw() string
+	Clone() Value
 }
 
 func calculateValue(calculable Value, values map[string]Value) (string, error) {
@@ -73,6 +74,13 @@ func (c *ConstValue) Raw() string {
 	return c.RawValue
 }
 
+func (c *ConstValue) Clone() Value {
+	return &ConstValue{
+		RawValue: c.RawValue,
+		Value:    c.Value,
+	}
+}
+
 func (c *ConstValue) Get() string {
 	if c.Value != "" {
 		return c.Value
@@ -86,6 +94,13 @@ func (c *ConstValue) String() string {
 
 type RegexpValue struct {
 	RawValue, Value string
+}
+
+func (r *RegexpValue) Clone() Value {
+	return &RegexpValue{
+		Value:    r.Value,
+		RawValue: r.RawValue,
+	}
 }
 
 func (r *RegexpValue) Calculate(values map[string]Value) error {
