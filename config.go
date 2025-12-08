@@ -50,6 +50,10 @@ type Config struct {
 	Parallel int `yaml:"parallel"`
 	// Experimental is config for enabling experimental / work in progress features.
 	Experimental Experimental `yaml:"experimental"`
+	// If set, force using specific comment style.
+	// Otherwise, comment style is assumed based on number of comment lines or existing multi-line comments.
+	// Supports: "double-slash", "multi-line", "multi-line-star".
+	Style string `yaml:"comment-style,omitempty"`
 }
 
 func (c *Config) GetDelims() string {
@@ -189,6 +193,10 @@ func (c *Config) FillSettings(settings *Settings) error {
 		settings.Values = vals
 	}
 
+	if c.Style != "" {
+		settings.CommentStyle = c.Style
+	}
+
 	settings.Parallel = c.GetParallel()
 	settings.CGO = c.Experimental.CGO
 
@@ -217,6 +225,7 @@ type Settings struct {
 	LeftDelim, RightDelim string
 	Parallel              int
 	CGO                   bool
+	CommentStyle          string
 }
 
 func (c *Settings) SetTemplate(tmplStr, tmplPath string) error {
@@ -267,4 +276,19 @@ func (c *Settings) SetValues(values map[string]string) {
 	})
 
 	c.Values = result
+}
+
+func getStyle(style string) (CommentStyleType, error) {
+	switch strings.ToLower(style) {
+	case "":
+		return -1, nil
+	case "double-slash":
+		return DoubleSlash, nil
+	case "multi-line":
+		return MultiLine, nil
+	case "multi-line-star":
+		return MultiLineStar, nil
+	default:
+		return -1, fmt.Errorf("unknown comment style: %s", style)
+	}
 }

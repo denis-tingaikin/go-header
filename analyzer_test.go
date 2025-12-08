@@ -81,6 +81,7 @@ func TestAnalyzer_fix(t *testing.T) {
 		{dir: "fix", cfgFilename: "fix.yml"},
 		{dir: "sample", cfgFilename: "sample.yml"},
 		{dir: "noheader", cfgFilename: "noheader.yml"},
+		{dir: "noheader-multilinestar", cfgFilename: "noheader-multilinestar.yml"},
 		// {dir: "regexpvalue_issue", cfgFilename: "regexpvalue_issue.yml"}, // TODO: https://github.com/denis-tingaikin/go-header/issues/52
 	}
 
@@ -160,6 +161,10 @@ func extractGolden(t *testing.T, filename string) string {
 	fs := token.NewFileSet()
 	tokenFile, err := parser.ParseFile(fs, filename, nil, parser.ParseComments)
 	require.NoError(t, err)
+
+	if len(tokenFile.Comments) == 0 {
+		return ""
+	}
 
 	var header string
 	for _, comment := range tokenFile.Comments[0].List {

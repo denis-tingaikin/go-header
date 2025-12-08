@@ -204,6 +204,14 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 		}
 	}
 
+	// override assumed comments style, if configured
+	if a.Settings.CommentStyle != "" {
+		s, err := getStyle(a.Settings.CommentStyle)
+		if err == nil {
+			style = s
+		}
+	}
+
 	vars, err := a.getPerTargetValues(path)
 	if err != nil {
 		return nil, err
