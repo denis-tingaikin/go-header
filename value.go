@@ -19,6 +19,7 @@ package goheader
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -30,35 +31,52 @@ type Value interface {
 }
 
 func calculateValue(calculable Value, values map[string]Value) (string, error) {
+	return calculateValueWithCycleDetection(calculable, values, nil)
+}
+
+func calculateValueWithCycleDetection(calculable Value, values map[string]Value, seen map[string]bool) (string, error) {
 	sb := strings.Builder{}
 	r := calculable.Raw()
-	var endIndex int
-	var startIndex int
-	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
+	for {
+		startIndex := strings.Index(r, "{{")
+		if startIndex < 0 {
+			break
+		}
 		_, _ = sb.WriteString(r[:startIndex])
-		endIndex = strings.Index(r, "}}")
+		endIndex := strings.Index(r[startIndex:], "}}")
 		if endIndex < 0 {
 			return "", errors.New("missed value ending")
 		}
+		endIndex += startIndex // convert to absolute index in r
 		subVal := strings.TrimSpace(r[startIndex+2 : endIndex])
 		subVal, _ = strings.CutPrefix(subVal, ".")
+		if seen[subVal] {
+			return "", fmt.Errorf("circular reference detected for value %v", subVal)
+		}
 		if val := values[subVal]; val != nil {
-			if err := val.Calculate(values); err != nil {
+			nextSeen := make(map[string]bool, len(seen)+1)
+			for k, v := range seen {
+				nextSeen[k] = v
+			}
+			nextSeen[subVal] = true
+			v, err := calculateValueWithCycleDetection(val, values, nextSeen)
+			if err != nil {
 				return "", err
 			}
-			sb.WriteString(val.Get())
+			sb.WriteString(v)
 		} else {
 			return "", fmt.Errorf("unknown value name %v", subVal)
 		}
-		endIndex += 2
-		r = r[endIndex:]
+		r = r[endIndex+2:]
 	}
 	_, _ = sb.WriteString(r)
 	return sb.String(), nil
 }
 
 type ConstValue struct {
-	RawValue, Value string
+	RawValue   string
+	Value      string
+	calculated bool
 }
 
 func (c *ConstValue) Calculate(values map[string]Value) error {
@@ -67,6 +85,7 @@ func (c *ConstValue) Calculate(values map[string]Value) error {
 		return err
 	}
 	c.Value = v
+	c.calculated = true
 	return nil
 }
 
@@ -76,13 +95,14 @@ func (c *ConstValue) Raw() string {
 
 func (c *ConstValue) Clone() Value {
 	return &ConstValue{
-		RawValue: c.RawValue,
-		Value:    c.Value,
+		RawValue:   c.RawValue,
+		Value:      c.Value,
+		calculated: c.calculated,
 	}
 }
 
 func (c *ConstValue) Get() string {
-	if c.Value != "" {
+	if c.calculated {
 		return c.Value
 	}
 	return c.RawValue
@@ -93,13 +113,16 @@ func (c *ConstValue) String() string {
 }
 
 type RegexpValue struct {
-	RawValue, Value string
+	RawValue   string
+	Value      string
+	calculated bool
 }
 
 func (r *RegexpValue) Clone() Value {
 	return &RegexpValue{
-		Value:    r.Value,
-		RawValue: r.RawValue,
+		Value:      r.Value,
+		RawValue:   r.RawValue,
+		calculated: r.calculated,
 	}
 }
 
@@ -109,14 +132,16 @@ func (r *RegexpValue) Calculate(values map[string]Value) error {
 		return err
 	}
 	r.Value = v
+	r.calculated = true
 	return nil
 }
 
 func (r *RegexpValue) Raw() string {
 	return r.RawValue
 }
+
 func (r *RegexpValue) Get() string {
-	if r.Value != "" {
+	if r.calculated {
 		return r.Value
 	}
 	return r.RawValue
@@ -124,6 +149,32 @@ func (r *RegexpValue) Get() string {
 
 func (r *RegexpValue) String() string {
 	return r.Get()
+}
+
+// regexSafeValue wraps a ConstValue so that String() returns
+// a regex-escaped version of its value. This is used when substituting
+// const values into the regex matching template.
+type regexSafeValue struct {
+	inner *ConstValue
+}
+
+func (r *regexSafeValue) String() string {
+	return regexp.QuoteMeta(r.inner.Get())
+}
+
+// regexSafeValues returns a map where ConstValues are wrapped to produce
+// regex-escaped output via String(). RegexpValues are left as-is since
+// they intentionally contain regex patterns.
+func regexSafeValues(vals map[string]Value) map[string]any {
+	result := make(map[string]any, len(vals))
+	for k, v := range vals {
+		if cv, ok := v.(*ConstValue); ok {
+			result[k] = &regexSafeValue{inner: cv}
+		} else {
+			result[k] = v
+		}
+	}
+	return result
 }
 
 var _ Value = &ConstValue{}
