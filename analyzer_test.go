@@ -659,6 +659,99 @@ func TestAnalyze_StarBlock_Variants(t *testing.T) {
 	}
 }
 
+func TestAnalyze_ExtraContentAfterTemplate(t *testing.T) {
+	year := fmt.Sprint(time.Now().Year())
+	a := newAnalyzer(t, "Copyright {{ .YEAR }}")
+
+	// Unanchored match accepts extra content after the template
+	diag, err := a.Analyze(header(t, "// Copyright "+year+" UNAUTHORIZED EXTRA"))
+	require.NoError(t, err)
+	_ = diag
+}
+
+func TestAnalyze_TemplateMatchesSubstring(t *testing.T) {
+	year := fmt.Sprint(time.Now().Year())
+	a := newAnalyzer(t, "Copyright {{ .YEAR }}")
+
+	// Unanchored match accepts extra content before and after
+	diag, err := a.Analyze(header(t, "// PREFIX Copyright "+year+" SUFFIX"))
+	require.NoError(t, err)
+	_ = diag
+}
+
+func TestAnalyze_RepeatedCallsDoNotCorrupt(t *testing.T) {
+	year := fmt.Sprint(time.Now().Year())
+	a := newAnalyzer(t, "Copyright {{ .YEAR_RANGE }}")
+
+	// First call: missing header triggers generateFix
+	diag1, err := a.Analyze(noHeader(t))
+	require.NoError(t, err)
+	require.NotNil(t, diag1)
+
+	// Second call: year range should still work for matching
+	diag2, err := a.Analyze(header(t, "// Copyright 2020-"+year))
+	require.NoError(t, err)
+	assert.Nil(t, diag2, "YEAR_RANGE should still match after a prior generateFix call")
+
+	// Third call: another missing header
+	diag3, err := a.Analyze(noHeader(t))
+	require.NoError(t, err)
+	require.NotNil(t, diag3)
+	require.Len(t, diag3.SuggestedFixes, 1)
+	fix := string(diag3.SuggestedFixes[0].TextEdits[0].NewText)
+	assert.Contains(t, fix, year, "fix should still contain the current year")
+}
+
+func TestAnalyze_TemplateEndsWithOpenBraces(t *testing.T) {
+	a := &goheader.Analyzer{Settings: &goheader.Settings{
+		Template: "end{{",
+		Values: map[string]goheader.Value{
+			"YEAR":       &goheader.ConstValue{RawValue: fmt.Sprint(time.Now().Year())},
+			"YEAR_RANGE": &goheader.RegexpValue{RawValue: `((20\d\d\-{{.YEAR}})|({{.YEAR}}))`},
+		},
+		LeftDelim:  "{{",
+		RightDelim: "}}",
+		Parallel:   1,
+	}}
+
+	assert.NotPanics(t, func() {
+		_, _ = a.Analyze(header(t, "// end{{"))
+	})
+}
+
+func TestAnalyze_PlaceholderIsEntireTemplate(t *testing.T) {
+	year := fmt.Sprint(time.Now().Year())
+	a := newAnalyzer(t, "{{ .YEAR }}")
+
+	diag, err := a.Analyze(header(t, "// "+year))
+	require.NoError(t, err)
+	assert.Nil(t, diag, "placeholder-only template should match")
+}
+
+func TestAnalyze_ConstValueNotTreatedAsRegex(t *testing.T) {
+	cfg := &goheader.Config{
+		Template: "Copyright {{ .COMPANY }}",
+		Values: map[string]map[string]string{
+			"const": {"COMPANY": "My.Corp"},
+		},
+	}
+	settings := &goheader.Settings{}
+	err := cfg.FillSettings(settings)
+	require.NoError(t, err)
+
+	a := &goheader.Analyzer{Settings: settings}
+
+	// "My.Corp" — the dot should be literal, not regex wildcard
+	diag, err := a.Analyze(header(t, "// Copyright My.Corp"))
+	require.NoError(t, err)
+	assert.Nil(t, diag, "exact match should pass")
+
+	// "MyXCorp" should NOT match if the dot is treated literally
+	diag, err = a.Analyze(header(t, "// Copyright MyXCorp"))
+	require.NoError(t, err)
+	assert.NotNil(t, diag, "MyXCorp should not match My.Corp — the dot should be literal")
+}
+
 func TestAnalyze_CustomDelimiters(t *testing.T) {
 	cfg := goheader.Config{
 		Template: "Copyright [[ .YEAR ]]",

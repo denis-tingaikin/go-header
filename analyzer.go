@@ -236,7 +236,8 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 
 	headerTemplateBuffer := new(bytes.Buffer)
 
-	err = tmpl.Execute(headerTemplateBuffer, vars)
+	regexVars := regexSafeValues(vars)
+	err = tmpl.Execute(headerTemplateBuffer, regexVars)
 	if err != nil {
 		return nil, err
 	}

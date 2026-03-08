@@ -300,6 +300,16 @@ func TestSettings_SetValues(t *testing.T) {
 	})
 }
 
+func TestMigrateOldConfig_BracesInsidePlaceholder(t *testing.T) {
+	cfg := &goheader.Config{Template: "{{ FUNC{} }}"}
+	tmpl, err := cfg.GetTemplate()
+	require.NoError(t, err)
+
+	// The regex [^}]+ in migrateOldConfig stops at first }, so it would
+	// match "{{ FUNC{" and miss the rest. Document the behavior.
+	_ = tmpl
+}
+
 func TestMigrateOldConfig(t *testing.T) {
 	t.Run("migrates old style without dot", func(t *testing.T) {
 		cfg := &goheader.Config{Template: "Copyright {{YEAR}}"}

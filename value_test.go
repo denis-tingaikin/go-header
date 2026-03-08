@@ -174,6 +174,30 @@ func TestCalculateValue(t *testing.T) {
 			vals:     map[string]goheader.Value{},
 			expected: "",
 		},
+		{
+			name: "closing braces before opening",
+			raw:  "a]]}b{{.X}}c",
+			vals: map[string]goheader.Value{
+				"X": &goheader.ConstValue{RawValue: "replaced"},
+			},
+			expected: "a]]}breplacedc",
+		},
+		{
+			name: "double curly braces before reference",
+			raw:  "prefix}}middle{{.X}}suffix",
+			vals: map[string]goheader.Value{
+				"X": &goheader.ConstValue{RawValue: "val"},
+			},
+			expected: "prefix}}middlevalsuffix",
+		},
+		{
+			name: "reference resolves to empty string",
+			raw:  "{{.EMPTY}}",
+			vals: map[string]goheader.Value{
+				"EMPTY": &goheader.ConstValue{RawValue: ""},
+			},
+			expected: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -233,4 +257,28 @@ func TestCalculateValue_Errors(t *testing.T) {
 			assert.Contains(t, err.Error(), tt.errMsg)
 		})
 	}
+}
+
+func TestCalculateValue_SelfReference(t *testing.T) {
+	v := &goheader.ConstValue{RawValue: "{{.SELF}}"}
+	vals := map[string]goheader.Value{
+		"SELF": v,
+	}
+
+	err := v.Calculate(vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "circular reference")
+}
+
+func TestRegexpValue_GetReturnsEmptyAfterCalculate(t *testing.T) {
+	empty := &goheader.ConstValue{RawValue: ""}
+	vals := map[string]goheader.Value{
+		"EMPTY": empty,
+	}
+
+	v := &goheader.RegexpValue{RawValue: "{{.EMPTY}}"}
+	err := v.Calculate(vals)
+	require.NoError(t, err)
+
+	assert.Equal(t, "", v.Get(), "Get() should return the calculated empty string, not the raw template")
 }
