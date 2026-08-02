@@ -31,29 +31,39 @@ type Value interface {
 
 func calculateValue(calculable Value, values map[string]Value) (string, error) {
 	sb := strings.Builder{}
+
 	r := calculable.Raw()
+
 	var endIndex int
 	var startIndex int
+
 	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
 		_, _ = sb.WriteString(r[:startIndex])
+
 		endIndex = strings.Index(r, "}}")
 		if endIndex < 0 {
 			return "", errors.New("missed value ending")
 		}
+
 		subVal := strings.TrimSpace(r[startIndex+2 : endIndex])
 		subVal, _ = strings.CutPrefix(subVal, ".")
+
 		if val := values[subVal]; val != nil {
 			if err := val.Calculate(values); err != nil {
 				return "", err
 			}
+
 			sb.WriteString(val.Get())
 		} else {
 			return "", fmt.Errorf("unknown value name %v", subVal)
 		}
+
 		endIndex += 2
 		r = r[endIndex:]
 	}
+
 	_, _ = sb.WriteString(r)
+
 	return sb.String(), nil
 }
 
@@ -66,7 +76,9 @@ func (c *ConstValue) Calculate(values map[string]Value) error {
 	if err != nil {
 		return err
 	}
+
 	c.Value = v
+
 	return nil
 }
 
@@ -85,6 +97,7 @@ func (c *ConstValue) Get() string {
 	if c.Value != "" {
 		return c.Value
 	}
+
 	return c.RawValue
 }
 
@@ -108,7 +121,9 @@ func (r *RegexpValue) Calculate(values map[string]Value) error {
 	if err != nil {
 		return err
 	}
+
 	r.Value = v
+
 	return nil
 }
 
@@ -119,6 +134,7 @@ func (r *RegexpValue) Get() string {
 	if r.Value != "" {
 		return r.Value
 	}
+
 	return r.RawValue
 }
 

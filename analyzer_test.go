@@ -161,12 +161,12 @@ func extractGolden(t *testing.T, filename string) string {
 	tokenFile, err := parser.ParseFile(fs, filename, nil, parser.ParseComments)
 	require.NoError(t, err)
 
-	var header string
+	var header strings.Builder
 	for _, comment := range tokenFile.Comments[0].List {
-		header += comment.Text + "\n"
+		header.WriteString(comment.Text + "\n")
 	}
 
-	return header
+	return header.String()
 }
 
 func header(t *testing.T, header string) (string, *ast.File) {
