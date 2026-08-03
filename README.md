@@ -24,7 +24,7 @@ Simple go source code linter providing checks for copyrgiht headers.
 For installation, you can simply use `go install`.
 
 ```bash
-go install github.com/denis-tingaikin/go-header/cmd/go-header@latest
+go install github.com/denis-tingaikin/go-header/v2/cmd/go-header@latest
 ```
 
 ## Usage

@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 
-	goheader "github.com/denis-tingaikin/go-header"
+	goheader "github.com/denis-tingaikin/go-header/v2"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 

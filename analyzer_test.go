@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	goheader "github.com/denis-tingaikin/go-header"
+	goheader "github.com/denis-tingaikin/go-header/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/analysis/analysistest"

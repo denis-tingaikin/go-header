@@ -1,4 +1,4 @@
-module github.com/denis-tingaikin/go-header
+module github.com/denis-tingaikin/go-header/v2
 
 go 1.25.0
 
@@ -13,9 +13,4 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-)
-
-retract (
-	v1.0.1 // Contains retractions only.
-	v1.0.0 // wrong major version.
 )
