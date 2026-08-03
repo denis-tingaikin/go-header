@@ -39,10 +39,10 @@ func calculateValue(calculable Value, values map[string]Value) (string, error) {
 		startIndex int
 	)
 
-	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
+	for startIndex = strings.Index(r, defaultLeftDelim); startIndex >= 0; startIndex = strings.Index(r, defaultLeftDelim) {
 		_, _ = sb.WriteString(r[:startIndex])
 
-		endIndex = strings.Index(r, "}}")
+		endIndex = strings.Index(r, defaultRightDelim)
 		if endIndex < 0 {
 			return "", errors.New("missed value ending")
 		}

@@ -27,6 +27,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	defaultLeftDelim  = "{{"
+	defaultRightDelim = "}}"
+)
+
 // Experimental represents config params for enabling experimental / work in progress features.
 type Experimental struct {
 	// CGO if true enables support for cgo files. Currently positioning of issues can be float.
@@ -57,7 +62,7 @@ type Config struct {
 
 func (c *Config) GetDelims() string {
 	if c.Delims == "" {
-		return "{{}}"
+		return defaultLeftDelim + defaultRightDelim
 	}
 
 	return c.Delims
@@ -98,17 +103,18 @@ func (c *Config) GetValues() (map[string]Value, error) {
 
 func (c *Config) FillSettings(settings *Settings) error {
 	delimiters := c.GetDelims()
+
 	if delimiters != "" && len(delimiters)%2 == 0 {
 		settings.LeftDelim = delimiters[:len(delimiters)/2]
 		settings.RightDelim = delimiters[len(delimiters)/2:]
 	}
 
 	if settings.LeftDelim == "" {
-		settings.LeftDelim = "{{"
+		settings.LeftDelim = defaultLeftDelim
 	}
 
 	if settings.RightDelim == "" {
-		settings.RightDelim = "}}"
+		settings.RightDelim = defaultRightDelim
 	}
 
 	tmpl, err := c.GetTemplate()
@@ -253,12 +259,12 @@ func (c *Settings) SetTemplate(tmplStr, tmplPath string) error {
 func (c *Settings) SetDelimiters(left, right string) {
 	c.LeftDelim = left
 	if left == "" {
-		c.LeftDelim = "{{"
+		c.LeftDelim = defaultLeftDelim
 	}
 
 	c.RightDelim = right
 	if right == "" {
-		c.RightDelim = "}}"
+		c.RightDelim = defaultRightDelim
 	}
 }
 

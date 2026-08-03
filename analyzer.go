@@ -92,7 +92,7 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 
 				diag, err := a.Analyze(filename, file)
 				if err != nil {
-					// TODO handle the error.
+					// TODO((denis-tingaikin): handle the error.
 					return
 				}
 
@@ -276,7 +276,7 @@ func (a *Analyzer) getPerTargetValues(path string) (map[string]Value, error) {
 }
 
 func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (string, error) {
-	// TODO: add values for quick fixes in config
+	// TODO(denis-tingaikin): add values for quick fixes in config
 	vals["YEAR_RANGE"] = vals["YEAR"]
 	vals["MOD_YEAR_RANGE"] = vals["YEAR"]
 
