@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2025 Denis Tingaikin
+// Copyright (c) 2020-2026 Denis Tingaikin
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 
-	goheader "github.com/denis-tingaikin/go-header"
+	goheader "github.com/denis-tingaikin/go-header/v2"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 

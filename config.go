@@ -35,9 +35,6 @@ type Experimental struct {
 
 // Config represents go-header linter setup parameters
 type Config struct {
-	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
-	// DEPRECATED: Use Vars instead.
-	Values map[string]map[string]string `yaml:"values"`
 	// Template is template for checking. Uses values.
 	Template string `yaml:"template"`
 	// TemplatePath path to the template file. Useful if need to load the template from a specific file.
@@ -46,16 +43,22 @@ type Config struct {
 	Vars map[string]string `yaml:"vars"`
 	// Delims represents a string marker for values. The default is "{{}}".
 	Delims string `yaml:"delims"`
-	// Parallel means a number of goroutines to proccess files. Default runtime.NumCPU()
-	Parallel int `yaml:"parallel"`
 	// Experimental is config for enabling experimental / work in progress features.
 	Experimental Experimental `yaml:"experimental"`
+
+	// Parallel means a number of goroutines to proccess files. Default runtime.NumCPU()
+	Parallel int `yaml:"parallel"`
+
+	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
+	// DEPRECATED: Use Vars instead.
+	Values map[string]map[string]string `yaml:"values"`
 }
 
 func (c *Config) GetDelims() string {
 	if c.Delims == "" {
 		return "{{}}"
 	}
+
 	return c.Delims
 }
 
@@ -63,6 +66,7 @@ func (c *Config) GetParallel() int {
 	if c.Parallel <= 0 {
 		return runtime.NumCPU()
 	}
+
 	return c.Parallel
 }
 
@@ -91,21 +95,47 @@ func (c *Config) GetValues() (map[string]Value, error) {
 	return result, nil
 }
 
-func builtInValues() map[string]Value {
-	var result = make(map[string]Value)
-	year := fmt.Sprint(time.Now().Year())
-	result["YEAR_RANGE"] = &RegexpValue{
-		RawValue: `((20\d\d\-{{.YEAR}})|({{.YEAR}}))`,
+func (c *Config) FillSettings(settings *Settings) error {
+	delimiters := c.GetDelims()
+	if delimiters != "" && len(delimiters)%2 == 0 {
+		settings.LeftDelim = delimiters[:len(delimiters)/2]
+		settings.RightDelim = delimiters[len(delimiters)/2:]
 	}
-	result["YEAR"] = &ConstValue{
-		RawValue: year,
+
+	if settings.LeftDelim == "" {
+		settings.LeftDelim = "{{"
 	}
-	return result
+
+	if settings.RightDelim == "" {
+		settings.RightDelim = "}}"
+	}
+
+	tmpl, err := c.GetTemplate()
+	if err != nil {
+		return err
+	}
+
+	if tmpl != "" {
+		settings.Template = tmpl
+	}
+
+	vals, err := c.GetValues()
+	if err != nil {
+		return err
+	}
+
+	if len(vals) > 0 {
+		settings.Values = vals
+	}
+
+	settings.Parallel = c.GetParallel()
+	settings.CGO = c.Experimental.CGO
+
+	return nil
 }
 
 func (c *Config) GetTemplate() (string, error) {
 	var tmpl, err = c.getTemplate()
-
 	if err != nil {
 		return tmpl, err
 	}
@@ -117,6 +147,7 @@ func (c *Config) getTemplate() (string, error) {
 	if c.Template != "" {
 		return c.Template, nil
 	}
+
 	if c.TemplatePath == "" {
 		return "", nil
 	}
@@ -129,6 +160,21 @@ func (c *Config) getTemplate() (string, error) {
 	c.Template = strings.TrimSpace(string(b))
 
 	return c.Template, nil
+}
+
+func builtInValues() map[string]Value {
+	var result = make(map[string]Value)
+
+	year := fmt.Sprint(time.Now().Year())
+	result["YEAR_RANGE"] = &RegexpValue{
+		RawValue: `((20\d\d\-{{.YEAR}})|({{.YEAR}}))`,
+	}
+
+	result["YEAR"] = &ConstValue{
+		RawValue: year,
+	}
+
+	return result
 }
 
 func migrateOldConfig(input string, delims string) string {
@@ -156,43 +202,6 @@ func migrateOldConfig(input string, delims string) string {
 	})
 
 	return result
-}
-
-func (c *Config) FillSettings(settings *Settings) error {
-	delimiters := c.GetDelims()
-	if delimiters != "" && len(delimiters)%2 == 0 {
-		settings.LeftDelim = delimiters[:len(delimiters)/2]
-		settings.RightDelim = delimiters[len(delimiters)/2:]
-	}
-
-	if settings.LeftDelim == "" {
-		settings.LeftDelim = "{{"
-	}
-	if settings.RightDelim == "" {
-		settings.RightDelim = "}}"
-	}
-
-	tmpl, err := c.GetTemplate()
-	if err != nil {
-		return err
-	}
-	if tmpl != "" {
-		settings.Template = tmpl
-	}
-
-	vals, err := c.GetValues()
-	if err != nil {
-		return err
-	}
-
-	if len(vals) > 0 {
-		settings.Values = vals
-	}
-
-	settings.Parallel = c.GetParallel()
-	settings.CGO = c.Experimental.CGO
-
-	return nil
 }
 
 func Parse(data string) (*Config, error) {

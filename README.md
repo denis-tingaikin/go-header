@@ -5,30 +5,31 @@ Simple go source code linter providing checks for copyrgiht headers.
 
 ## Features
 
-| Feature                     | Status | Details                                  |
-|-----------------------------|--------|------------------------------------------|
-| ✅ **Copyright Headers**     | ✔️     | Supports all standard formats            |
-| ✅ **Parallel Processing**   | ✔️     | Processes files concurrently             |
-| ✅ **Comment Support**       | ✔️     | `//`, `/* */`, `/* * */`                 |
-| ✅ **Go/Analysis**           | ✔️     | Native Go tooling integration            |
-| ✅ **Regex Customization**   | ✔️     | User-defined pattern matching            |
-| ✅ **Automatic Year Checks** | ✔️     | Validates & updates copyright years      |
-| ✅ **Auto-Fix Files**        | ✔️     | In-place header corrections              |
-| ✅ **Go/Template Support**   | ✔️     | go templates can be used in headers      |
-| ✍️ **Multi-License Support** | ❌     | In progress                              |
+| Feature                      | Status | Details                             |
+|------------------------------|--------|-------------------------------------|
+| ✅ **Copyright Headers**     | ✔️     | Supports all standard formats       |
+| ✅ **Parallel Processing**   | ✔️     | Processes files concurrently        |
+| ✅ **Comment Support**       | ✔️     | `//`, `/* */`, `/* * */`            |
+| ✅ **Go/Analysis**           | ✔️     | Native Go tooling integration       |
+| ✅ **Regex Customization**   | ✔️     | User-defined pattern matching       |
+| ✅ **Automatic Year Checks** | ✔️     | Validates & updates copyright years |
+| ✅ **Auto-Fix Files**        | ✔️     | In-place header corrections         |
+| ✅ **Go/Template Support**   | ✔️     | go templates can be used in headers |
+| ✍️ **Multi-License Support** | ❌     | In progress                         |
 
 
 
 ## Installation
 
-For installation you can simply use `go install`.
+For installation, you can simply use `go install`.
 
 ```bash
-go install github.com/denis-tingaikin/go-header/cmd/go-header@latest
+go install github.com/denis-tingaikin/go-header/v2/cmd/go-header@latest
 ```
+
 ## Usage
 
-```bash
+```
   -V    print version and exit
   -all
         no effect (deprecated)
@@ -60,11 +61,12 @@ go install github.com/denis-tingaikin/go-header/cmd/go-header@latest
         write trace log to this file
   -v    no effect (deprecated)
 ```
+
 ## Configuration
+
 To configuring `.go-header.yml` linter you simply need to fill the next fields:
 
 ```yaml
----
 template: # expects header template string.
 template-path: # expects path to file with license header string. 
 values: # expects `const` or `regexp` node with values where values is a map string to string.
@@ -106,7 +108,6 @@ go-header ./...
 Create configuration file  `.go-header.yml` in the root of project.
 
 ```yaml
----
 vars:
   DOMAIN: sales|product
   MY_COMPANY: {{ .DOMAIN }}.mycompany.com
@@ -127,5 +128,6 @@ template: |
   limitations under the License.
 ```
 
-### Step 2 
+### Step 2
+
 Run `go-header ./...`
