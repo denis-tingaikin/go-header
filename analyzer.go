@@ -77,8 +77,10 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 
 	close(jobCh)
 
-	var wg sync.WaitGroup
-	var reportMutex sync.Mutex
+	var (
+		wg          sync.WaitGroup
+		reportMutex sync.Mutex
+	)
 
 	for range a.Settings.Parallel {
 		wg.Go(func() {
@@ -98,7 +100,7 @@ func (a *Analyzer) Run(pass *analysis.Pass) (any, error) {
 					continue
 				}
 
-				var line = 1
+				line := 1
 				if ast.IsGenerated(file) {
 					line = 4
 				}
@@ -140,15 +142,18 @@ func (a *Analyzer) Analyze(path string, file *ast.File) (*analysis.Diagnostic, e
 		return nil, nil
 	}
 
-	var header string
-	var style CommentStyleType
+	var (
+		header string
+		style  CommentStyleType
+	)
 
-	var comment = a.skipDirectives(file)
+	comment := a.skipDirectives(file)
 
 	result := &analysis.Diagnostic{}
 
 	if comment != nil {
-		var list = comment.List
+		list := comment.List
+
 		if len(list) > 0 && strings.HasPrefix(list[0].Text, "/*") {
 			result.Pos = list[0].Pos()
 			result.End = list[0].End()
@@ -247,7 +252,7 @@ func (a *Analyzer) skipDirectives(file *ast.File) *ast.CommentGroup {
 }
 
 func (a *Analyzer) getPerTargetValues(path string) (map[string]Value, error) {
-	var res = make(map[string]Value, len(a.Settings.Values))
+	res := make(map[string]Value, len(a.Settings.Values))
 
 	for k, v := range a.Settings.Values {
 		res[k] = v.Clone()
@@ -320,10 +325,12 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (s
 	return strings.Join(resSplit, "\n") + "\n", nil
 }
 
-// TODO: Do not vibe code
+// TODO(denis-tingaikin): Do not vibe code.
 func (a *Analyzer) quoteMeta(text string) string {
-	var result strings.Builder
-	var i int
+	var (
+		result strings.Builder
+		i      int
+	)
 
 	n := len(text)
 	for i < n {
@@ -363,17 +370,18 @@ func handleStarBlock(header string) (string, bool) {
 	var handled bool
 
 	return trimEachLine(header, func(s string) string {
-		var trimmed = strings.TrimSpace(s)
+		trimmed := strings.TrimSpace(s)
 		if !strings.HasPrefix(trimmed, "*") {
 			return s
 		}
 
 		if v, ok := strings.CutPrefix(trimmed, "* "); ok {
 			handled = true
+
 			return v
 		}
 
-		var res, _ = strings.CutPrefix(trimmed, "*")
+		res, _ := strings.CutPrefix(trimmed, "*")
 
 		return res
 	}), handled

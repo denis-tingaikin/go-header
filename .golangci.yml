@@ -1,0 +1,31 @@
+version: "2"
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+
+linters:
+  default: standard
+  enable:
+    - wsl_v5
+    - funcorder
+    - thelper
+    - revive
+    - gocritic
+    - misspell
+    - inamedparam
+    - gosec
+    - godot
+  settings:
+    staticcheck:
+      checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022", "-QF1001"]
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

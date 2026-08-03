@@ -27,13 +27,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Experimental represents config params for enabling experimental / work in progress features
+// Experimental represents config params for enabling experimental / work in progress features.
 type Experimental struct {
 	// CGO if true enables support for cgo files. Currently positioning of issues can be float.
 	CGO bool `yaml:"cgo"`
 }
 
-// Config represents go-header linter setup parameters
+// Config represents go-header linter setup parameters.
 type Config struct {
 	// Template is template for checking. Uses values.
 	Template string `yaml:"template"`
@@ -46,11 +46,12 @@ type Config struct {
 	// Experimental is config for enabling experimental / work in progress features.
 	Experimental Experimental `yaml:"experimental"`
 
-	// Parallel means a number of goroutines to proccess files. Default runtime.NumCPU()
+	// Parallel means a number of goroutines to process files. Default runtime.NumCPU()
 	Parallel int `yaml:"parallel"`
 
 	// Values is map of values. Supports two types 'const` and `regexp`. Values can be used recursively.
-	// DEPRECATED: Use Vars instead.
+	//
+	// Deprecated: Use Vars instead.
 	Values map[string]map[string]string `yaml:"values"`
 }
 
@@ -135,7 +136,7 @@ func (c *Config) FillSettings(settings *Settings) error {
 }
 
 func (c *Config) GetTemplate() (string, error) {
-	var tmpl, err = c.getTemplate()
+	tmpl, err := c.getTemplate()
 	if err != nil {
 		return tmpl, err
 	}
@@ -163,7 +164,7 @@ func (c *Config) getTemplate() (string, error) {
 }
 
 func builtInValues() map[string]Value {
-	var result = make(map[string]Value)
+	result := make(map[string]Value)
 
 	year := fmt.Sprint(time.Now().Year())
 	result["YEAR_RANGE"] = &RegexpValue{

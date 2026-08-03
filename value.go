@@ -23,7 +23,7 @@ import (
 )
 
 type Value interface {
-	Calculate(map[string]Value) error
+	Calculate(values map[string]Value) error
 	Get() string
 	Raw() string
 	Clone() Value
@@ -34,8 +34,10 @@ func calculateValue(calculable Value, values map[string]Value) (string, error) {
 
 	r := calculable.Raw()
 
-	var endIndex int
-	var startIndex int
+	var (
+		endIndex   int
+		startIndex int
+	)
 
 	for startIndex = strings.Index(r, "{{"); startIndex >= 0; startIndex = strings.Index(r, "{{") {
 		_, _ = sb.WriteString(r[:startIndex])
@@ -130,6 +132,7 @@ func (r *RegexpValue) Calculate(values map[string]Value) error {
 func (r *RegexpValue) Raw() string {
 	return r.RawValue
 }
+
 func (r *RegexpValue) Get() string {
 	if r.Value != "" {
 		return r.Value
@@ -142,5 +145,7 @@ func (r *RegexpValue) String() string {
 	return r.Get()
 }
 
-var _ Value = &ConstValue{}
-var _ Value = &RegexpValue{}
+var (
+	_ Value = &ConstValue{}
+	_ Value = &RegexpValue{}
+)

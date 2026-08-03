@@ -170,6 +170,8 @@ func extractGolden(t *testing.T, filename string) string {
 }
 
 func header(t *testing.T, header string) (string, *ast.File) {
+	t.Helper()
+
 	return t.TempDir(), &ast.File{
 		Comments: []*ast.CommentGroup{
 			{
