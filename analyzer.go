@@ -50,6 +50,83 @@ type Result struct {
 type Analyzer struct {
 	Settings *Settings
 }
+type modificationTimeResolver struct {
+	path string
+	once sync.Once
+	time time.Time
+	err  error
+}
+
+func (r *modificationTimeResolver) resolve() (time.Time, error) {
+	r.once.Do(func() {
+		r.time, r.err = modTime(r.path)
+	})
+
+	return r.time, r.err
+}
+
+// lazyModificationValue defers per-file Git history lookups until a template or nested value uses a MOD value.
+type lazyModificationValue struct {
+	fallback  Value
+	resolver  *modificationTimeResolver
+	values    map[string]Value
+	yearRange bool
+	once      sync.Once
+	value     Value
+}
+
+func (v *lazyModificationValue) resolve() {
+	v.once.Do(func() {
+		v.value = v.fallback
+
+		if modified, err := v.resolver.resolve(); err == nil {
+			if v.yearRange {
+				v.value = &RegexpValue{RawValue: `((20\d\d\-{{.MOD_YEAR}})|({{.MOD_YEAR}}))`}
+			} else {
+				v.value = &ConstValue{RawValue: fmt.Sprint(modified.Year())}
+			}
+		}
+	})
+}
+
+func (v *lazyModificationValue) Calculate(values map[string]Value) error {
+	v.values = values
+	v.resolve()
+
+	return v.value.Calculate(values)
+}
+
+func (v *lazyModificationValue) Get() string {
+	_ = v.Calculate(v.values)
+
+	return v.value.Get()
+}
+
+func (v *lazyModificationValue) Raw() string {
+	v.resolve()
+
+	return v.value.Raw()
+}
+func (v *lazyModificationValue) RawValue() string {
+	return v.Raw()
+}
+
+func (v *lazyModificationValue) Value() string {
+	return v.Get()
+}
+
+func (v *lazyModificationValue) Clone() Value {
+	return &lazyModificationValue{
+		fallback:  v.fallback.Clone(),
+		resolver:  v.resolver,
+		values:    v.values,
+		yearRange: v.yearRange,
+	}
+}
+
+func (v *lazyModificationValue) String() string {
+	return v.Get()
+}
 
 func New(settings *Settings) *analysis.Analyzer {
 	if settings == nil {
@@ -253,15 +330,24 @@ func (a *Analyzer) getPerTargetValues(path string) (map[string]Value, error) {
 		res[k] = v.Clone()
 	}
 
-	res["MOD_YEAR"] = a.Settings.Values["YEAR"].Clone()
-	res["MOD_YEAR_RANGE"] = a.Settings.Values["YEAR_RANGE"].Clone()
-
-	if t, err := modTime(path); err == nil {
-		res["MOD_YEAR"] = &ConstValue{RawValue: fmt.Sprint(t.Year())}
-		res["MOD_YEAR_RANGE"] = &RegexpValue{RawValue: `((20\d\d\-{{.MOD_YEAR}})|({{.MOD_YEAR}}))`}
+	resolver := &modificationTimeResolver{path: path}
+	res["MOD_YEAR"] = &lazyModificationValue{
+		fallback: a.Settings.Values["YEAR"].Clone(),
+		resolver: resolver,
+		values:   res,
+	}
+	res["MOD_YEAR_RANGE"] = &lazyModificationValue{
+		fallback:  a.Settings.Values["YEAR_RANGE"].Clone(),
+		resolver:  resolver,
+		values:    res,
+		yearRange: true,
 	}
 
 	for _, v := range res {
+		if _, ok := v.(*lazyModificationValue); ok {
+			continue
+		}
+
 		if err := v.Calculate(res); err != nil {
 			return nil, err
 		}
@@ -276,6 +362,10 @@ func (a *Analyzer) generateFix(style CommentStyleType, vals map[string]Value) (s
 	vals["MOD_YEAR_RANGE"] = vals["YEAR"]
 
 	for _, v := range vals {
+		if _, ok := v.(*lazyModificationValue); ok {
+			continue
+		}
+
 		if _, ok := v.(*RegexpValue); ok {
 			return "", errors.New("fixes are not supported for regexp values. See more details https://github.com/denis-tingaikin/go-header/issues/52")
 		}

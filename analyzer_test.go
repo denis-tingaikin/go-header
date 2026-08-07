@@ -22,7 +22,9 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -129,15 +131,13 @@ func TestAnalyzer_fix(t *testing.T) {
 }
 
 func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
-	var cfg goheader.Config
+	gitMarker := installGitStub(t)
 
+	var cfg goheader.Config
 	vals, err := cfg.GetValues()
 	require.NoError(t, err)
 
-	vals["MY_VAL"] = &goheader.RegexpValue{
-		RawValue: "{{ .YEAR_RANGE }} B",
-	}
-
+	vals["MY_VAL"] = &goheader.RegexpValue{RawValue: "{{ .YEAR_RANGE }} B"}
 	settings := &goheader.Settings{
 		Values:     vals,
 		Template:   "A {{ .MY_VAL }}",
@@ -147,11 +147,62 @@ func TestAnalyzer_YearRangeValue_ShouldWorkWithComplexVariables(t *testing.T) {
 	}
 
 	a := goheader.Analyzer{Settings: settings}
-
 	diag, err := a.Analyze(header(t, fmt.Sprintf("A 2000-%v B", time.Now().Year())))
 	require.NoError(t, err)
-
 	require.Nil(t, diag)
+
+	_, err = os.Stat(gitMarker)
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	vals["MY_VAL"] = &goheader.RegexpValue{RawValue: "{{ .MOD_YEAR_RANGE }} B"}
+	settings.Template = "A {{ .MY_VAL }} {{ .MOD_YEAR.Value }} {{ .MOD_YEAR.RawValue }}"
+	path, file := header(t, "A 2000-2001 B 2001 2001")
+	modified := time.Date(2001, time.January, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, os.Chtimes(path, modified, modified))
+
+	diag, err = a.Analyze(path, file)
+	require.NoError(t, err)
+	require.Nil(t, diag)
+
+	marker, err := os.ReadFile(gitMarker)
+	require.NoError(t, err)
+	require.Equal(t, "x", string(marker))
+}
+
+func installGitStub(t *testing.T) string {
+	t.Helper()
+
+	binDir := t.TempDir()
+	sourcePath := filepath.Join(binDir, "main.go")
+	source := `package main
+
+import "os"
+
+func main() {
+	file, err := os.OpenFile(os.Getenv("GO_HEADER_GIT_MARKER"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		os.Exit(2)
+	}
+	_, _ = file.WriteString("x")
+	_ = file.Close()
+	os.Exit(1)
+}
+`
+	require.NoError(t, os.WriteFile(sourcePath, []byte(source), 0o600))
+
+	gitPath := filepath.Join(binDir, "git")
+	if runtime.GOOS == "windows" {
+		gitPath += ".exe"
+	}
+
+	output, err := exec.Command("go", "build", "-o", gitPath, sourcePath).CombinedOutput()
+	require.NoError(t, err, string(output))
+
+	gitMarker := filepath.Join(binDir, "git-invoked")
+	t.Setenv("GO_HEADER_GIT_MARKER", gitMarker)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	return gitMarker
 }
 
 func extractGolden(t *testing.T, filename string) string {
