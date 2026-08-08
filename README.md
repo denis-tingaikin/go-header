@@ -88,10 +88,10 @@ values:
 
 ## Bult-in values
 
-- **MOD_YEAR** - Returns the year when the file was modified.
-- **MOD_YEAR-RANGE** - Returns a year-range where the range starts from the  year when the file was modified.
-- **YEAR** - Expects current year. Example header value: `2020`.  Example of template using: `{{YEAR}}` or `{{year}}`.
-- **YEAR-RANGE** - Expects any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example of template using: `{{year-range}}` or `{{YEAR-RANGE}}`.
+- `MOD_YEAR` (const): Returns the year when the file was modified.
+- `MOD_YEAR_RANGE` (regexp): Returns a year-range where the range starts from the  year when the file was modified.
+- `YEAR` (const): Expects current year. Example header value: `2020`.  Example of template using: `{{.YEAR}}` or `{{.year}}`.
+- `YEAR_RANGE` (regexp): Expects any valid year interval or current year. Example header value: `2020` or `2000-2020`. Example of template using: `{{.year_range}}` or `{{.YEAR_RANGE}}`.
 
 ## Execution
 
